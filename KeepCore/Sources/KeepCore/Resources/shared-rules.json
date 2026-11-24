@@ -1,0 +1,132 @@
+{
+  "contract_version": "1.0.0",
+  "limits": {
+    "item_expiry_default_days": 30,
+    "item_expiry_max_days": 365,
+    "expiry_options_default": [
+      7,
+      30,
+      90,
+      365
+    ],
+    "claim_minutes": 30,
+    "claim_max_items": 10,
+    "device_code_minutes": 10,
+    "login_code_minutes": 10,
+    "login_code_max_attempts": 5,
+    "device_idle_days": 90,
+    "asset_max_bytes": 3145728,
+    "image_long_edge_px": 1600,
+    "storage_quota_bytes": 1073741824,
+    "triage_per_user_per_day": 200,
+    "triage_default_after_minutes": 10,
+    "page_fetch_timeout_seconds": 8,
+    "queue_idle_days": 7,
+    "analysis_summary_max_chars": 60,
+    "analysis_points_max": 3,
+    "notify_wait_seconds": 120,
+    "notify_max_wait_seconds": 600,
+    "text_max_chars": 200000
+  },
+  "shared_rules": {
+    "secret_like": {
+      "description": "Content that looks like a password or a credential. A client must ask the user before saving it, and must not silently drop it. A match on any pattern counts.\n",
+      "max_length_checked": 200,
+      "patterns": [
+        {
+          "name": "private_key_block",
+          "regex": "-----BEGIN [A-Z ]*PRIVATE KEY-----"
+        },
+        {
+          "name": "known_credential_prefix",
+          "regex": "\\b(sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|xox[baprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,})\\b"
+        },
+        {
+          "name": "bearer_or_basic_header",
+          "regex": "(?i)\\b(authorization|bearer|basic)[:= ]+[A-Za-z0-9._~+/=-]{16,}"
+        },
+        {
+          "name": "assignment_of_secret",
+          "regex": "(?i)\\b(pass(word|wd)?|secret|api[_-]?key|access[_-]?key|private[_-]?key)\\s*[:=]\\s*\\S{6,}"
+        },
+        {
+          "name": "single_dense_string",
+          "description": "One line, no spaces, 12 to 64 characters, with a lower-case letter, an upper-case letter, a digit and a symbol, and not a URL.",
+          "regex": "^(?!https?://)(?=\\S*[a-z])(?=\\S*[A-Z])(?=\\S*\\d)(?=\\S*[^A-Za-z0-9])\\S{12,64}$"
+        }
+      ]
+    },
+    "save_messages": {
+      "description": "The one sentence a saving client shows. The core returns the key and the text.",
+      "saved": {
+        "zh": "已存入。",
+        "en": "Saved."
+      },
+      "duplicate": {
+        "zh": "之前存过了，没有重复存。",
+        "en": "Already saved. Nothing was added."
+      },
+      "saved_image_skipped_quota": {
+        "zh": "已存入。图片没存入：超出存储配额。",
+        "en": "Saved. The image was not stored: storage quota exceeded."
+      },
+      "queued_offline": {
+        "zh": "还没存入，排着队，联网后自动存入。",
+        "en": "Not saved yet. Queued, and it will be saved when you are back online."
+      },
+      "failed": {
+        "zh": "没存入：{reason}",
+        "en": "Not saved: {reason}"
+      },
+      "secret_like_question": {
+        "zh": "这段内容看起来像密码或凭据，还要存入吗？",
+        "en": "This looks like a password or a credential. Save it anyway?"
+      }
+    },
+    "verdicts": {
+      "worth_deep_dive": {
+        "zh": "值得深挖",
+        "en": "Worth a deep dive"
+      },
+      "good_to_know": {
+        "zh": "知道就行",
+        "en": "Good to know"
+      },
+      "skippable": {
+        "zh": "可以略过",
+        "en": "Skippable"
+      }
+    },
+    "content_unavailable": {
+      "zh": "没取到内容",
+      "en": "Content could not be fetched"
+    },
+    "notifications": {
+      "one_analysis": {
+        "zh": "「{title}」的解读好了，可以看判定。",
+        "en": "The analysis of “{title}” is ready. You can see the verdict."
+      },
+      "one_deep_read": {
+        "zh": "「{title}」的精读好了，可以去深挖队列看精读。",
+        "en": "The deep read of “{title}” is ready. See it in the deep-dive queue."
+      },
+      "many_analysis": {
+        "zh": "{n} 条的解读好了，可以去看。",
+        "en": "{n} analyses are ready."
+      },
+      "many_deep_read": {
+        "zh": "{n} 条的精读好了，可以去看。",
+        "en": "{n} deep reads are ready."
+      },
+      "many_mixed": {
+        "zh": "{n} 条处理好了，可以去看。",
+        "en": "{n} items are ready."
+      }
+    },
+    "opening_line": {
+      "description": "What a user sends to a chat assistant to start a deep dive. It carries no content; the assistant fetches it.",
+      "zh": "深挖这一条：{first_line}",
+      "en": "Deep dive into this item: {first_line}"
+    }
+  }
+}

@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use the newest Xcode on the runner
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+
+      - name: Checks
+        run: |
+          python3 scripts/strings.py --check
+          ruby scripts/gen-shared-rules.rb --check
+
+      - name: Unit tests
+        run: cd KeepCore && swift test
+
+      - name: Generate the project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Pick a simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print([x['udid'] for k in sorted(d, reverse=True) if 'iOS' in k for x in d[k] if x['name'].startswith('iPhone')][0])")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: |
+          xcodebuild build -project KeepEssence.xcodeproj -scheme KeepEssence \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build/dd CODE_SIGN_IDENTITY=- | tail -20
+
+      - name: Tests on the simulator, against the fake core
+        run: |
+          node fake/server.mjs &
+          sleep 1
+          curl -sf -X POST http://127.0.0.1:8795/__reset
+          xcodebuild test -project KeepEssence.xcodeproj -scheme KeepEssence \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build/dd CODE_SIGN_IDENTITY=- \
+            -resultBundlePath build/result.xcresult | grep -E "Test Case|error:|Executed|\*\* TEST"
+
+      - name: Keep the result
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresult
+          path: build/result.xcresult

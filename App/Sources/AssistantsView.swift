@@ -37,6 +37,7 @@ struct AssistantsView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
+        .padding(.top, 1)   // keeps scrolled content from running under the clock
         .page()
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: Section.self) { s in

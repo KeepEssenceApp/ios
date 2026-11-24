@@ -26,6 +26,18 @@ final class ShareViewController: UIViewController {
         let items = (extensionContext?.inputItems as? [NSExtensionItem]) ?? []
         Task { await model.run(items) }
     }
+
+    /// Ask the system for a small sheet. Where the system does not honour it for an extension, the
+    /// sheet stays page-sized and the card sits at its bottom (docs/pitfalls.md).
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        preferredContentSize = CGSize(width: view.bounds.width, height: 160)
+        if let sheet = sheetPresentationController ?? parent?.sheetPresentationController {
+            sheet.detents = [.custom { _ in 160 }]
+            sheet.prefersGrabberVisible = false
+            sheet.preferredCornerRadius = 10
+        }
+    }
 }
 
 @MainActor
@@ -37,16 +49,14 @@ final class ShareModel: ObservableObject {
     }
 
     @Published var phase: Phase = .working
+    /// A second, smaller line under the sentence: what to do next.
+    @Published var hint: String?
     var close: () -> Void = {}
     private var draft: SaveDraft?
     private let store = KeepStore.shared
     private var closed = false
 
     func run(_ items: [NSExtensionItem]) async {
-        guard store.credential != nil else {
-            // Nothing can be sent without signing in, and only the app can do that.
-            return finish(nil, L("share.sign_in_first"), after: 3)
-        }
         guard let shared = await Shared.read(items) else {
             return finish(.failed, failedSentence(L("share.nothing")), after: 3)
         }
@@ -78,7 +88,7 @@ final class ShareModel: ObservableObject {
     }
 
     func answer(save: Bool) {
-        guard save else { return finishNow() }
+        guard save else { return finish(nil, service.declinedSentence, after: 1.6) }
         phase = .working
         Task { await send() }
     }
@@ -87,9 +97,19 @@ final class ShareModel: ObservableObject {
         store.meta.sharedRules.saveMessage("failed", lang: KeepLang.current, reason: reason) ?? reason
     }
 
+    private var service: SaveService {
+        SaveService(client: store.makeClient(), queue: store.queue, rules: store.meta.sharedRules)
+    }
+
     private func send() async {
         guard let draft else { return }
-        let service = SaveService(client: store.makeClient(), queue: store.queue, rules: store.meta.sharedRules, quotaReason: L("save.quota"))
+        guard store.credential != nil else {
+            // Nothing can be sent before signing in, and only the app can do that: the save waits on
+            // the device, and the sheet says so and what to do.
+            let held = service.hold(draft)
+            hint = held.kind == .queued ? L("share.sign_in_first") : nil
+            return finish(held.kind, held.sentence, after: 4)
+        }
         let outcome = await service.save(draft)
         finish(outcome.kind, outcome.sentence, after: outcome.kind == .failed || outcome.kind == .queued ? 3.2 : 2.2)
     }
@@ -167,7 +187,6 @@ struct ShareSheetView: View {
 
     var body: some View {
         VStack {
-            Spacer()
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .center, spacing: 12) {
                     Image(scheme == .dark ? "MarkOnDark" : "MarkOnLight")
@@ -193,7 +212,8 @@ struct ShareSheetView: View {
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sheet))
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.sheet).stroke(Theme.line, lineWidth: 1))
             .padding(.horizontal, 12)
-            .padding(.bottom, 12)
+            .padding(.top, 20)
+            Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
@@ -209,10 +229,15 @@ struct ShareSheetView: View {
         case .asking(let question):
             Text(question).font(Theme.bodyStrong).foregroundStyle(Theme.text)
         case .said(let kind, let sentence):
-            Text(sentence)
-                .font(Theme.bodyStrong)
-                .foregroundStyle(kind == .failed ? Theme.danger : Theme.text)
-                .accessibilityIdentifier("share.sentence")
+            VStack(alignment: .leading, spacing: 4) {
+                Text(sentence)
+                    .font(Theme.bodyStrong)
+                    .foregroundStyle(kind == .failed ? Theme.danger : Theme.text)
+                    .accessibilityIdentifier("share.sentence")
+                if let hint = model.hint {
+                    Text(hint).font(Theme.secondary).foregroundStyle(Theme.text2).accessibilityIdentifier("share.hint")
+                }
+            }
         }
     }
 }

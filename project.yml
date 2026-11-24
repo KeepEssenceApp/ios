@@ -55,7 +55,7 @@ targets:
     postBuildScripts:
       - name: Allow a local core in debug builds
         script: |
-          # http://127.0.0.1:8791 (a core on this Mac) and the test fake. Release builds only speak HTTPS.
+          # http://127.0.0.1:8801 (a core on this Mac) and the test fake. Release builds only speak HTTPS.
           if [ "$CONFIGURATION" = "Debug" ]; then
             P="${TARGET_BUILD_DIR}/${INFOPLIST_PATH}"
             /usr/libexec/PlistBuddy -c "Delete :NSAppTransportSecurity" "$P" 2>/dev/null || true

@@ -59,13 +59,13 @@ final class APIClientTests: XCTestCase {
     }
 
     func testGetMeta() async throws {
-        let c = stub(.json(200, #"{"contract_version":"1.0.0","limits":{"image_long_edge_px":1600},"shared_rules":{"secret_like":{"max_length_checked":200,"patterns":[{"name":"p","regex":"abc"}]},"save_messages":{"saved":{"zh":"已存入。","en":"Saved."}}}}"#))
+        let c = stub(.json(200, #"{"contract_version":"1.0.0","limits":{"image_long_edge_px":1600},"shared_rules":{"secret_like":{"max_length_checked":200,"patterns":[{"name":"p","regex":"abc","flags":"i","any_length":true}]},"save_messages":{"saved":{"zh":"已存入。","en":"Saved."}}}}"#))
         let (meta, data) = try await c.getMeta()
         expect("GET", "/v1/meta")
         XCTAssertNil(last.headers["Authorization"])
         XCTAssertEqual(meta.contractVersion, "1.0.0")
         XCTAssertEqual(meta.limit("image_long_edge_px"), 1600)
-        XCTAssertEqual(meta.sharedRules.secretPatterns, [SecretPattern(name: "p", regex: "abc")])
+        XCTAssertEqual(meta.sharedRules.secretPatterns, [SecretPattern(name: "p", regex: "abc", flags: "i", anyLength: true)])
         XCTAssertEqual(meta.sharedRules.saveMessage("saved", lang: "zh"), "已存入。")
         XCTAssertFalse(data.isEmpty)
     }
@@ -225,12 +225,13 @@ final class APIClientTests: XCTestCase {
     }
 
     func testQueueAndDeepDive() async throws {
-        let entry = #"{"item_id":"i1","title":"T","added_at":"2026-11-24T12:00:00Z","deep_read":"ready","report":{"read":"R","found":"F","questions":["q1"],"assistant":{"id":"a1","name":"Reader"}},"went_at":null,"fetched_at":null,"entry":"https://a.example/start"}"#
+        let entry = #"{"item_id":"i1","title":"T","added_at":"2026-11-24T12:00:00Z","deep_read":"ready","report":{"read":"R","found":"F","questions":["q1"],"assistant":{"id":"a1","name":"Reader"}},"went_at":"2026-11-24T13:00:00Z","went_to":{"id":"a2","name":"Deep"},"fetched_at":null,"entry":"https://a.example/start"}"#
         var c = stub(.json(200, #"{"entries":[\#(entry)]}"#))
         let q = try await c.listQueue()
         expect("GET", "/v1/deep-read-queue")
         XCTAssertEqual(q.first?.deepRead, "ready")
         XCTAssertEqual(q.first?.report?.questions, ["q1"])
+        XCTAssertEqual(q.first?.wentTo?.id, "a2")
 
         c = stub(.json(200, entry))
         _ = try await c.addToQueue(itemId: "i1")
@@ -342,7 +343,7 @@ final class APIClientTests: XCTestCase {
 
     func testServerAddressParsing() {
         XCTAssertEqual(KeepStore.parseServer("keepessence.app")?.absoluteString, "https://keepessence.app")
-        XCTAssertEqual(KeepStore.parseServer(" http://127.0.0.1:8791/ ")?.absoluteString, "http://127.0.0.1:8791")
+        XCTAssertEqual(KeepStore.parseServer(" http://127.0.0.1:8801/ ")?.absoluteString, "http://127.0.0.1:8801")
         XCTAssertNil(KeepStore.parseServer(""))
         XCTAssertNil(KeepStore.parseServer("ftp://x.example"))
     }

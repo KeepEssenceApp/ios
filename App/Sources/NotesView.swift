@@ -54,6 +54,7 @@ struct NotesView: View {
         }
         .refreshable { await load() }
         .scrollDismissesKeyboard(.interactively)
+        .padding(.top, 1)   // keeps scrolled content from running under the clock
         .page()
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: String.self) { NoteView(noteId: $0) }
@@ -103,7 +104,8 @@ struct NotesView: View {
             }
         }
         .card()
-        .accessibilityIdentifier("queue.card")
+        .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("queue.card")
     }
 
     @ViewBuilder private func deepReadState(_ e: QueueEntry) -> some View {
@@ -250,7 +252,7 @@ struct PasteSheet: View {
     private func save() async {
         busy = true
         defer { busy = false }
-        let request = PasteNoteRequest(title: title, body: text, itemId: entry.itemId)
+        let request = PasteNoteRequest(title: title, body: text, itemId: entry.itemId, assistantId: entry.wentTo?.id)
         if await model.run({ try await model.client.pasteNote(request, idempotencyKey: key) }) != nil {
             model.say(L("said.saved"))
             onSaved()

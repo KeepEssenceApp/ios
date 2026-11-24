@@ -27,6 +27,7 @@ struct DigestView: View {
             .padding(.vertical, 12)
         }
         .refreshable { await load() }
+        .padding(.top, 1)   // keeps scrolled content from running under the clock
         .page()
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: String.self) { id in ItemDetailView(itemId: id, onChange: { Task { await load() } }) }
@@ -78,6 +79,7 @@ struct DigestView: View {
                 SwipeRow(onRight: { Task { await queue(w.itemId) } }, onLeft: { Task { await signal(w.itemId, .notInterested) } }) {
                     worthCard(w)
                 }
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("digest.card")
             }
         }

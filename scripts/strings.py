@@ -237,11 +237,10 @@ S = [
     ("account.sign_out", "退出", "Sign out"),
     ("account.sign_out.confirm", "退出会撤销这台设备。", "Signing out revokes this device."),
     # share extension
-    ("share.sign_in_first", "先打开 KeepEssence 登录，再回来存入。", "Open KeepEssence and sign in first."),
+    ("share.sign_in_first", "先打开 KeepEssence 登录。", "Open KeepEssence and sign in first."),
     ("share.dont_save", "不存入", "Don't save"),
     ("share.nothing", "没有能存入的内容", "there was nothing to save"),
     ("share.image_unreadable", "图片读不出来", "the image could not be read"),
-    ("save.quota", "超出存储配额", "storage quota exceeded"),
 ]
 
 # Words the glossary and design/terms.md ban from the interface.

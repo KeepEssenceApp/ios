@@ -9,9 +9,9 @@
 /* Begin PBXBuildFile section */
 		19B42AB344075FF42E2285EB /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24C27C485827BC51E83D7CF /* Components.swift */; };
 		1DE3CCFA257123899CB3C826 /* AssistantsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFD49256C2824A4053FC34DC /* AssistantsView.swift */; };
+		23D25E62E674489CAE7E8F7B /* KeepEssenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF16F429D11CECF4CECEBD0C /* KeepEssenceUITests.swift */; };
 		24C4DB90FA146923FAA025FF /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A36C2524C8CE01E80B51C1B6 /* ShareViewController.swift */; };
 		3B83C534E9C95D1B97C8482C /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94BF1EE2D3DD5D9DDF1FA321 /* AppModel.swift */; };
-		52B994A20BBA453E2F424941 /* Placeholder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA27576FC1E66D3A94DDC230 /* Placeholder.swift */; };
 		633B942B37C8726F8B096DD3 /* KeepCore in Frameworks */ = {isa = PBXBuildFile; productRef = 78AB7A5292B98AA3BBC1B7A5 /* KeepCore */; };
 		718C33BD19185402113965DC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F2AA4A5A3D6E76F34A7076E0 /* Assets.xcassets */; };
 		7B0A0789DF3EA5D2B37180A3 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 163E163C84FB8EB39040EAE0 /* SignInView.swift */; };
@@ -69,10 +69,10 @@
 		A36C2524C8CE01E80B51C1B6 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		A79641DEDBA5AAF9FFE6A5DF /* KeepEssenceUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = KeepEssenceUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A87F97E84A18CC5F3202A6AA /* DigestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DigestView.swift; sourceTree = "<group>"; };
+		AF16F429D11CECF4CECEBD0C /* KeepEssenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeepEssenceUITests.swift; sourceTree = "<group>"; };
 		B29179E08524F0CA05B7FE72 /* KeepEssenceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeepEssenceApp.swift; sourceTree = "<group>"; };
 		CFD49256C2824A4053FC34DC /* AssistantsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantsView.swift; sourceTree = "<group>"; };
 		D6887F00054EB75095E51979 /* KeepEssenceShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = KeepEssenceShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		DA27576FC1E66D3A94DDC230 /* Placeholder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Placeholder.swift; sourceTree = "<group>"; };
 		F24C27C485827BC51E83D7CF /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		F2AA4A5A3D6E76F34A7076E0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -170,7 +170,7 @@
 		D162E24F7E12C2B7410D994D /* UITests */ = {
 			isa = PBXGroup;
 			children = (
-				DA27576FC1E66D3A94DDC230 /* Placeholder.swift */,
+				AF16F429D11CECF4CECEBD0C /* KeepEssenceUITests.swift */,
 			);
 			path = UITests;
 			sourceTree = "<group>";
@@ -355,7 +355,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# http://127.0.0.1:8791 (a core on this Mac) and the test fake. Release builds only speak HTTPS.\nif [ \"$CONFIGURATION\" = \"Debug\" ]; then\n  P=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n  /usr/libexec/PlistBuddy -c \"Delete :NSAppTransportSecurity\" \"$P\" 2>/dev/null || true\n  /usr/libexec/PlistBuddy -c \"Add :NSAppTransportSecurity dict\" -c \"Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true\" \"$P\"\nfi\n";
+			shellScript = "# http://127.0.0.1:8801 (a core on this Mac) and the test fake. Release builds only speak HTTPS.\nif [ \"$CONFIGURATION\" = \"Debug\" ]; then\n  P=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n  /usr/libexec/PlistBuddy -c \"Delete :NSAppTransportSecurity\" \"$P\" 2>/dev/null || true\n  /usr/libexec/PlistBuddy -c \"Add :NSAppTransportSecurity dict\" -c \"Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true\" \"$P\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -387,7 +387,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				52B994A20BBA453E2F424941 /* Placeholder.swift in Sources */,
+				23D25E62E674489CAE7E8F7B /* KeepEssenceUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

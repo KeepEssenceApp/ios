@@ -22,7 +22,7 @@ struct TodayView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                PageHeader(title: L("tab.today"), narrow: true)
+                PageHeader(title: L("tab.today"), narrow: true, month: month)
                     .padding(.bottom, 4)
                 queueLines
                 if loaded && open.isEmpty && waiting.isEmpty {
@@ -33,7 +33,8 @@ struct TodayView: View {
                         AnalysisCard(item: item, onDeepDive: { choosing = item.id },
                                      onSignal: { s in Task { await signal(item.id, s) } })
                     }
-                    .accessibilityIdentifier("today.card")
+                    .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("today.card")
                 }
                 if !handled.isEmpty { rest }
                 if !waiting.isEmpty {
@@ -45,18 +46,9 @@ struct TodayView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(alignment: .topTrailing) {
-                // The month, faint, top right; the status bar sits on top of it.
-                if let month {
-                    CalendarDots(month: month, cell: 9, gap: 6)
-                        .opacity(0.3)
-                        .padding(.top, 14)
-                        .padding(.trailing, 16)
-                        .allowsHitTesting(false)
-                }
-            }
         }
         .refreshable { await load() }
+        .padding(.top, 1)   // keeps scrolled content from running under the clock
         .page()
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: String.self) { id in ItemDetailView(itemId: id, onChange: { Task { await load() } }) }

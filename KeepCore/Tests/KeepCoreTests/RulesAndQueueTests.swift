@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 final class SecretMatcherTests: XCTestCase {
     /// The patterns come from the contract (x-shared-rules), through the generated copy.
     private let matcher = SecretMatcher(rules: Meta.bundled.sharedRules)
+    private let secretLine = ["pass", "word = hunter", "2222"].joined()
 
     func testEveryPatternOfTheContractCompiles() {
         XCTAssertEqual(Meta.bundled.sharedRules.secretPatterns.count, 5)
@@ -40,17 +41,38 @@ final class SecretMatcherTests: XCTestCase {
         XCTAssertFalse(matcher.looksSecret(nil))
     }
 
-    func testOnlyTheFirstPartIsChecked() {
-        let long = String(repeating: "正文。", count: 100) + " password = hunter2222"
-        XCTAssertNil(matcher.match(long), "a secret past max_length_checked is not looked at")
-        XCTAssertNotNil(matcher.match("password = hunter2222 " + String(repeating: "正文。", count: 100)))
+    func testLongTextNeverCountsExceptForAnyLengthPatterns() {
+        let filler = String(repeating: "正文。", count: 100)
+        XCTAssertNil(matcher.match(secretLine + " " + filler), "text longer than max_length_checked is not checked")
+        XCTAssertNil(matcher.match(filler + " " + secretLine))
+        let fill = 200 - secretLine.count - 1
+        XCTAssertEqual(matcher.match(String(repeating: "正", count: fill) + " " + secretLine), "assignment_of_secret", "exactly 200 characters: checked")
+        XCTAssertNil(matcher.match(String(repeating: "正", count: fill + 1) + " " + secretLine), "201 characters: not checked")
+        // A private key block is marked any_length: found in text of any length.
+        XCTAssertEqual(matcher.match(filler + "\n-----BEGIN OPENSSH PRIVATE KEY-----\n" + filler), "private_key_block") // gitleaks:allow
+    }
+
+    func testFlagsAndInlineFlagsBothWork() {
+        let rules = SharedRules(json: .object(["secret_like": .object(["max_length_checked": .number(50), "patterns": .array([
+            .object(["name": .string("with_flag"), "regex": .string("alpha"), "flags": .string("i")]),
+            .object(["name": .string("inline"), "regex": .string("(?i)beta")]),
+            .object(["name": .string("exact"), "regex": .string("gamma")]),
+        ])])]))
+        let m = SecretMatcher(rules: rules)
+        XCTAssertEqual(m.maxLengthChecked, 50)
+        XCTAssertEqual(m.match("ALPHA"), "with_flag")
+        XCTAssertEqual(m.match("BeTa"), "inline")
+        XCTAssertNil(m.match("GAMMA"))
+        XCTAssertEqual(m.match("gamma"), "exact")
     }
 
     func testSaveMessagesComeFromTheContract() {
         let r = Meta.bundled.sharedRules
         XCTAssertEqual(r.saveMessage("saved", lang: "zh"), "已存入。")
         XCTAssertEqual(r.saveMessage("queued_offline", lang: "en"), "Not saved yet. Queued, and it will be saved when you are back online.")
-        XCTAssertEqual(r.saveMessage("failed", lang: "zh", reason: "超出存储配额"), "没存入：超出存储配额")
+        XCTAssertEqual(r.saveMessage("failed", lang: "zh", reason: "原因"), "没存入：原因")
+        XCTAssertEqual(r.saveMessage("queued_not_connected", lang: "zh"), "还没存入，排着队，接入后自动存入。")
+        XCTAssertEqual(r.saveMessage("declined", lang: "en"), "Not saved.")
         XCTAssertEqual(r.saveMessage("secret_like_question", lang: "zh"), "这段内容看起来像密码或凭据，还要存入吗？")
         XCTAssertNil(r.saveMessage("no_such_key", lang: "en"))
         XCTAssertEqual(Meta.bundled.limit("image_long_edge_px"), 1600)
@@ -70,7 +92,7 @@ final class OfflineQueueTests: XCTestCase {
     override func tearDown() { try? FileManager.default.removeItem(at: dir) }
 
     private func service(lang: String = "en") -> SaveService {
-        SaveService(client: StubProtocol.client(lang: lang), queue: queue, rules: Meta.bundled.sharedRules, lang: lang, quotaReason: "storage quota exceeded")
+        SaveService(client: StubProtocol.client(lang: lang), queue: queue, rules: Meta.bundled.sharedRules, lang: lang)
     }
 
     private let savedBody = #"{"status":"saved","item_id":"i9","message_key":"saved","message":"Saved."}"#
@@ -193,19 +215,26 @@ final class OfflineQueueTests: XCTestCase {
         XCTAssertEqual(StubProtocol.requests.map(\.path), ["/v1/assets", "/v1/items"])
     }
 
-    func testOverQuotaIsSaidTruthfully() async throws {
+    func testOverQuotaStillSavesAndTheCoreSaysTheImageWasNotStored() async throws {
         let image = try XCTUnwrap(ImagePrep.prepare(TestImage.png(width: 64, height: 64)))
         StubProtocol.reset { r in
-            r.path == "/v1/assets" ? .json(200, #"{"asset_id":"as8","status":"over_quota"}"#) : .json(201, self.savedBody)
+            r.path == "/v1/assets" ? .json(200, #"{"asset_id":"as8","status":"over_quota"}"#)
+                : .json(201, #"{"status":"saved","item_id":"i9","message_key":"saved_image_skipped_quota","message":"Saved. The image was not stored: storage quota exceeded.","image_stored":false}"#)
         }
-        // Only an image: nothing can be saved, and the sentence says why.
-        let only = await service().save(SaveDraft(request: SaveRequest(kind: "image"), image: image))
-        XCTAssertEqual(only, SaveOutcome(kind: .failed, sentence: "Not saved: storage quota exceeded"))
-        // An image with its page: the link is saved, the image is not, and the sentence says both.
-        let withLink = await service().save(SaveDraft(request: SaveRequest(kind: "image", url: "https://x.example/p"), image: image))
-        XCTAssertEqual(withLink, SaveOutcome(kind: .saved, sentence: "Saved. The image was not stored: storage quota exceeded."))
-        XCTAssertEqual(StubProtocol.requests.last?.json["kind"] as? String, "link")
-        XCTAssertNil(StubProtocol.requests.last?.json["asset_id"])
+        let o = await service().save(SaveDraft(request: SaveRequest(kind: "image", url: "https://x.example/p"), image: image))
+        XCTAssertEqual(o, SaveOutcome(kind: .saved, sentence: "Saved. The image was not stored: storage quota exceeded."))
+        XCTAssertEqual(StubProtocol.requests.map(\.path), ["/v1/assets", "/v1/items"], "nothing is uploaded")
+        XCTAssertEqual(StubProtocol.requests.last?.json["asset_id"] as? String, "as8")
+        XCTAssertEqual(StubProtocol.requests.last?.json["kind"] as? String, "image")
+    }
+
+    func testNotSignedInIsHeldAndSaidSo() async throws {
+        StubProtocol.reset { _ in .empty(500) }
+        let o = service(lang: "en").hold(SaveDraft(id: "hold-0000001", request: SaveRequest(kind: "link", url: "https://x.example", entry: "share")))
+        XCTAssertEqual(o, SaveOutcome(kind: .queued, sentence: "Not saved yet. Queued, and it will be saved once this device is connected."))
+        XCTAssertEqual(queue.entries().map(\.id), ["hold-0000001"])
+        XCTAssertTrue(StubProtocol.requests.isEmpty, "nothing is sent")
+        XCTAssertEqual(service(lang: "zh").declinedSentence, "没存入。")
     }
 
     func testOfflineImageIsQueuedWithItsBytes() async throws {

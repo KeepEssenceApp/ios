@@ -36,6 +36,7 @@ public enum JSONValue: Codable, Equatable, Sendable {
         return nil
     }
 
+    public var bool: Bool? { if case .bool(let b) = self { return b }; return nil }
     public var string: String? { if case .string(let s) = self { return s }; return nil }
     public var int: Int? { if case .number(let n) = self { return Int(n) }; return nil }
     public var array: [JSONValue]? { if case .array(let a) = self { return a }; return nil }
@@ -74,6 +75,17 @@ public struct Meta: Equatable, Sendable {
 public struct SecretPattern: Equatable, Sendable {
     public let name: String
     public let regex: String
+    /// `i` means match without regard to case.
+    public let flags: String?
+    /// Checked on text of any length, not only up to `max_length_checked`.
+    public let anyLength: Bool
+
+    public init(name: String, regex: String, flags: String? = nil, anyLength: Bool = false) {
+        self.name = name
+        self.regex = regex
+        self.flags = flags
+        self.anyLength = anyLength
+    }
 }
 
 /// `x-shared-rules` of the contract, as served by `GET /v1/meta`.
@@ -85,7 +97,7 @@ public struct SharedRules: Equatable, Sendable {
     public var secretPatterns: [SecretPattern] {
         (json["secret_like"]?["patterns"]?.array ?? []).compactMap { p in
             guard let name = p["name"]?.string, let regex = p["regex"]?.string else { return nil }
-            return SecretPattern(name: name, regex: regex)
+            return SecretPattern(name: name, regex: regex, flags: p["flags"]?.string, anyLength: p["any_length"]?.bool ?? false)
         }
     }
 

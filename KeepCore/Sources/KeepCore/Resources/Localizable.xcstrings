@@ -2449,23 +2449,6 @@
         }
       }
     },
-    "save.quota": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "storage quota exceeded"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "超出存储配额"
-          }
-        }
-      }
-    },
     "saveonly.sentence": {
       "extractionState": "manual",
       "localizations": {
@@ -2546,7 +2529,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "先打开 KeepEssence 登录，再回来存入。"
+            "value": "先打开 KeepEssence 登录。"
           }
         }
       }

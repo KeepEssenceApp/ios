@@ -444,6 +444,10 @@ route("DELETE", "/v1/assistants/:id", (c) => {
   c.empty(204);
 });
 
+route("GET", "/__page/:n", (c) => {
+  c.res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+  c.res.end(`<!doctype html><meta name="viewport" content="width=device-width"><title>Share test ${c.p.n}</title><h1>A page made for the share test</h1><p>Invented content, page ${c.p.n}.</p>`);
+}, true);
 route("POST", "/__reset", (c) => (seed(), c.empty(204)), true);
 route("GET", "/__state", (c) => c.json(200, { saved: S.saved, assets: [...S.assets.values()].map(({ data, ...a }) => ({ ...a, received: data?.length ?? 0 })), notes: S.notes.length, digests: S.digests.map((d) => ({ day: d.day, read: d.read })), queue: S.queue.map((q) => q.item_id), signals: S.items.filter((i) => i.signal).map((i) => [i.id, i.signal]) }), true);
 

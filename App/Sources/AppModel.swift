@@ -171,7 +171,7 @@ final class AppModel: ObservableObject {
 
     /// Sends what the share extension queued while there was no connection.
     func flushQueue() async {
-        let service = SaveService(client: client, queue: store.queue, rules: store.meta.sharedRules, quotaReason: L("save.quota"))
+        let service = SaveService(client: client, queue: store.queue, rules: store.meta.sharedRules)
         let outcomes = await service.flush()
         saveFailures += outcomes.filter { $0.kind == .failed }.map(\.sentence)
         queuedCount = store.queue.count

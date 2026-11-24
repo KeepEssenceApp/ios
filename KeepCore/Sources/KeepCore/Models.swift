@@ -218,6 +218,8 @@ public struct QueueEntry: Codable, Equatable, Identifiable, Sendable {
     public var deepRead: String
     public var report: DeepReadReport?
     public var wentAt: Date?
+    /// The assistant the user last went to for this entry.
+    public var wentTo: Signature?
     public var fetchedAt: Date?
     public var entry: String?
     public var id: String { itemId }

@@ -437,12 +437,17 @@ struct StatusSheet: View {
 struct PageHeader: View {
     let title: String
     var narrow = false
+    /// Today only: the month, faint, top right, where it covers no words.
+    var month: CalendarMonth?
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center) {
                 Text(title).font(Theme.title).accessibilityAddTraits(.isHeader)
                 Spacer()
                 if !narrow { StatusMark() }
+                if let month {
+                    CalendarDots(month: month, cell: 6, gap: 4).opacity(0.45).frame(height: 44).allowsHitTesting(false)
+                }
             }
             if narrow { StatusLine() }
         }

@@ -1,16 +1,18 @@
 import Foundation
 
 /// Decides whether content looks like a password or a credential, with the patterns the core serves
-/// (`shared_rules.secret_like`). A match on any pattern counts. Only the first `max_length_checked`
-/// characters of the trimmed content are looked at.
+/// (`shared_rules.secret_like`). A match on any pattern counts. Only content of at most
+/// `max_length_checked` characters after trimming is checked; longer content never counts, except
+/// for a pattern marked `any_length`.
 public struct SecretMatcher: @unchecked Sendable {
-    private let patterns: [(name: String, regex: NSRegularExpression)]
+    private let patterns: [(name: String, regex: NSRegularExpression, anyLength: Bool)]
     public let maxLengthChecked: Int
 
     public init(rules: SharedRules) {
         maxLengthChecked = rules.secretMaxLengthChecked
         patterns = rules.secretPatterns.compactMap { p in
-            (try? NSRegularExpression(pattern: p.regex)).map { (p.name, $0) }
+            let options: NSRegularExpression.Options = (p.flags ?? "").contains("i") ? [.caseInsensitive] : []
+            return (try? NSRegularExpression(pattern: p.regex, options: options)).map { (p.name, $0, p.anyLength) }
         }
     }
 
@@ -20,9 +22,9 @@ public struct SecretMatcher: @unchecked Sendable {
     public func match(_ content: String) -> String? {
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
-        let head = String(trimmed.prefix(maxLengthChecked))
-        let range = NSRange(head.startIndex..., in: head)
-        for p in patterns where p.regex.firstMatch(in: head, range: range) != nil {
+        let long = trimmed.count > maxLengthChecked
+        let range = NSRange(trimmed.startIndex..., in: trimmed)
+        for p in patterns where (!long || p.anyLength) && p.regex.firstMatch(in: trimmed, range: range) != nil {
             return p.name
         }
         return nil

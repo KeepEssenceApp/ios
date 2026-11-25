@@ -87,7 +87,7 @@ final class ThemeAndStringsTests: XCTestCase {
         }
         XCTAssertEqual([Theme.Radius.mark, Theme.Radius.tag, Theme.Radius.base, Theme.Radius.sheet], [0, 4, 6, 10])
         XCTAssertEqual([Theme.Size.display, Theme.Size.title, Theme.Size.subtitle, Theme.Size.item, Theme.Size.body, Theme.Size.secondary, Theme.Size.caption],
-                       [32, 26, 20, 17, 15, 13, 12])
+                       [32, 26, 20, 17, 16, 14, 13])
     }
 
     /// The bundled copy of the shared rules is the contract's, not a second wording.

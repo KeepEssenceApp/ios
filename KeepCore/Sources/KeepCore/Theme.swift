@@ -58,9 +58,9 @@ public enum Theme {
         public static let title: CGFloat = 26
         public static let subtitle: CGFloat = 20
         public static let item: CGFloat = 17
-        public static let body: CGFloat = 15
-        public static let secondary: CGFloat = 13
-        public static let caption: CGFloat = 12
+        public static let body: CGFloat = 16
+        public static let secondary: CGFloat = 14
+        public static let caption: CGFloat = 13
     }
 
     public static let display = Font.system(size: Size.display, weight: .bold)

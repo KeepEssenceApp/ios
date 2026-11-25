@@ -127,15 +127,17 @@ const publicItem = (i, detail = false) => {
   const out = {
     id: i.id, kind: i.kind, title: i.title, site: i.site ?? null, url: i.url ?? null, created_at: i.created_at, stage: i.stage,
     content_unavailable: !!i.content_unavailable, dispatch_to: i.dispatch_to ?? (i.stage === "saved" ? null : { id: "a_builtin", name: "内置助手" }),
-    days_left: i.pinned ? null : Math.max(0, (i.expiry_days ?? 30) - Math.floor((Date.now() - Date.parse(i.created_at)) / DAY)),
+    days_left: i.pinned ? null : Math.max(0, (i.expiry_days ?? 30) - Math.floor((Date.now() - Date.parse(i.expires_from ?? i.created_at)) / DAY)),
     pinned: !!i.pinned, signal: i.signal ?? null, in_queue: S.queue.some((q) => q.item_id === i.id), analysis: i.analysis ?? null,
   };
   if (detail) {
     Object.assign(out, {
       body: i.body ?? (i.kind === "text" ? "删减比添加更难。添加只需要一个理由，删减需要对整体有把握。" : i.content_unavailable ? null : "（原文的正文）" + i.title),
       asset_id: i.asset_id ?? null,
-      tags: [`assistant:${out.dispatch_to?.name ?? "内置助手"}`, `expiry:${i.expiry_days ?? 30}`, "source:phone/share"],
+      // A kept item has no end date: no expiry tag, no expiry moment.
+      tags: [`assistant:${out.dispatch_to?.name ?? "内置助手"}`, ...(i.pinned ? [] : [`expiry:${i.expiry_days ?? 30}`]), "source:phone/share"],
       expiry_days: i.pinned ? null : i.expiry_days ?? 30,
+      expires_at: i.pinned ? null : new Date(Date.parse(i.expires_from ?? i.created_at) + (i.expiry_days ?? 30) * DAY).toISOString(),
     });
   }
   return out;
@@ -287,7 +289,11 @@ route("GET", "/v1/items/:id", (c) => (item(c.p.id) ? c.json(200, publicItem(item
 route("PATCH", "/v1/items/:id", (c) => {
   const i = item(c.p.id);
   if (!i) return c.fail(404, "not_found");
-  if (c.body.expiry_days) i.expiry_days = c.body.expiry_days;
+  if (c.body.expiry_days) {
+    i.expiry_days = c.body.expiry_days;
+    // Days on a kept item give it an end date again, counted from now.
+    if (i.pinned) { i.pinned = false; i.expires_from = new Date().toISOString(); }
+  }
   if (c.body.dispatch_to) {
     const a = S.assistants.find((x) => x.id === c.body.dispatch_to);
     if (!a) return c.fail(400, "bad_request");
@@ -301,7 +307,12 @@ route("DELETE", "/v1/items/:id", (c) => {
   c.empty(204);
 });
 route("PUT", "/v1/items/:id/pin", (c) => (item(c.p.id) ? ((item(c.p.id).pinned = true), c.empty(204)) : c.fail(404, "not_found")));
-route("DELETE", "/v1/items/:id/pin", (c) => (item(c.p.id) ? ((item(c.p.id).pinned = false), c.empty(204)) : c.fail(404, "not_found")));
+route("DELETE", "/v1/items/:id/pin", (c) => {
+  const i = item(c.p.id);
+  if (!i) return c.fail(404, "not_found");
+  if (i.pinned) { i.pinned = false; i.expires_from = new Date().toISOString(); }
+  c.empty(204);
+});
 route("PUT", "/v1/items/:id/signal", (c) => {
   const i = item(c.p.id);
   if (!i) return c.fail(404, "not_found");

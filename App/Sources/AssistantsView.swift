@@ -269,9 +269,8 @@ struct ConnectPage: View {
     @State private var address: String?
     @State private var product = "claude"
 
-    private let products: [(id: String, name: String, steps: Int)] = [
-        ("claude", "Claude", 4), ("chatgpt", "ChatGPT", 4), ("gemini", "Gemini", 4), ("own", "", 3), ("muse", "Muse", 0),
-    ]
+    // Only products whose steps were checked get a tab; the others are named in one line (rule D13).
+    private let products = ConnectProducts.verified
 
     var body: some View {
         SubPage {
@@ -300,6 +299,11 @@ struct ConnectPage: View {
                         .buttonStyle(ProductButton(on: product == p.id))
                 }
             }
+            if !ConnectProducts.unverified.isEmpty {
+                Text(L("connect.unverified_list", ConnectProducts.unverified.joined(separator: ", ")))
+                    .font(Theme.caption).foregroundStyle(Theme.text3)
+                    .accessibilityIdentifier("connect.unverified")
+            }
             steps
         }
         .task {
@@ -311,18 +315,13 @@ struct ConnectPage: View {
         let p = products.first { $0.id == product } ?? products[0]
         VStack(alignment: .leading, spacing: 10) {
             Text(L("connect.\(p.id).kind")).font(Theme.secondary.weight(.semibold)).foregroundStyle(Theme.text2)
-            if p.steps == 0 {
-                // Rule D13: no steps are written for a product that was not checked.
-                DotLabel(kind: .greyRing, text: L("connect.unverified"), font: Theme.body)
-            } else {
-                ForEach(1...p.steps, id: \.self) { i in
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Text("\(i)").font(Theme.bodyStrong).monospacedDigit()
-                        Text(L("connect.\(p.id).\(i)")).font(Theme.body)
-                    }
+            ForEach(1...p.steps, id: \.self) { i in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text("\(i)").font(Theme.bodyStrong).monospacedDigit()
+                    Text(L("connect.\(p.id).\(i)")).font(Theme.body)
                 }
-                Text(L("connect.\(p.id).note")).font(Theme.secondary).foregroundStyle(Theme.text2)
             }
+            Text(L("connect.\(p.id).note")).font(Theme.secondary).foregroundStyle(Theme.text2)
         }
         .card()
     }

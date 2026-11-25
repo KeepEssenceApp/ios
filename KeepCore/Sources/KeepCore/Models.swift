@@ -149,6 +149,8 @@ public struct Item: Codable, Identifiable, Equatable, Sendable {
     public var assetId: String?
     public var tags: [String]?
     public var expiryDays: Int?
+    /// When the item is deleted. Nil when it is never deleted, and from a core that does not say.
+    public var expiresAt: Date?
 
     /// Not interested, seen, or in the deep-dive queue: it leaves the main list.
     public var handled: Bool { signal != nil || inQueue == true }

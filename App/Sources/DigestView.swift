@@ -37,13 +37,11 @@ struct DigestView: View {
     }
 
     private var noDigestSentence: String {
-        switch model.status?.noDigestReason {
-        case "not_yet_time": return L("status.no_digest.not_yet_time")
-        case "nothing_analysed": return L("status.no_digest.nothing_analysed")
-        case "no_assistant": return L("status.no_digest.no_assistant")
-        case "waiting_for_assistant": return L("status.no_digest.waiting")
-        default: return L("digest.none")
-        }
+        // One digest a day, after 21:00 in the user's time zone, when the day has an analysis. The
+        // sentence says which of these is missing; nothing is written on request.
+        let reason = model.status?.noDigestReason
+        let key = DigestEmpty.key(reason: reason)
+        return DigestEmpty.namesTime(reason: reason) ? L(key, model.user?.timezone ?? TimeZone.current.identifier) : L(key)
     }
 
     @ViewBuilder private func content(_ d: DailyDigest) -> some View {

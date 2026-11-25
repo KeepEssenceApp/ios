@@ -205,23 +205,6 @@
         }
       }
     },
-    "action.keep": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keep"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "收藏"
-          }
-        }
-      }
-    },
     "action.not_interested": {
       "extractionState": "manual",
       "localizations": {
@@ -1038,23 +1021,6 @@
         }
       }
     },
-    "connect.muse.kind": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Scheduled: analysis, daily digest, deep dives"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "定时型：解读、汇总、深挖"
-          }
-        }
-      }
-    },
     "connect.not_credential": {
       "extractionState": "manual",
       "localizations": {
@@ -1191,19 +1157,19 @@
         }
       }
     },
-    "connect.unverified": {
+    "connect.unverified_list": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not verified yet"
+            "value": "Not verified yet: %@."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "待验证"
+            "value": "待验证：%@。"
           }
         }
       }
@@ -1469,13 +1435,81 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "There is no daily digest yet."
+            "value": "No daily digest yet. There is one a day, written after 21:00 (%@) when the day has at least one analysed item; a missed day is folded into the next one."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "还没有每日摘要。"
+            "value": "还没有每日摘要。每天一份，当天至少有一条解读好的条目时，在 21:00（%@）之后出；漏掉的一天并进下一份。"
+          }
+        }
+      }
+    },
+    "digest.none.no_assistant": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No assistant is set to write the daily digest, so none is written. Today's analyses are in Today."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有指定出每日摘要的助手，所以不会有每日摘要。今天的解读都在「今天」里。"
+          }
+        }
+      }
+    },
+    "digest.none.not_yet_time": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's daily digest is written after 21:00 (%@). It needs at least one analysed item from today. Until then, today's analyses are in Today."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天的每日摘要在 21:00（%@）之后出。它需要今天至少有一条解读好的条目。在那之前，今天的解读都在「今天」里。"
+          }
+        }
+      }
+    },
+    "digest.none.nothing_analysed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No daily digest today yet: it needs at least one analysed item, and none of today's items is analysed. Once one is, the digest is written after 21:00 (%@)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天还没有每日摘要：它需要至少一条解读好的条目，而今天的条目都还没解读。有了解读，每日摘要在 21:00（%@）之后出。"
+          }
+        }
+      }
+    },
+    "digest.none.waiting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's daily digest is due: it is written when the assistant next comes. Until then, today's analyses are in Today."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天的每日摘要该出了：助手下次来时就出。在那之前，今天的解读都在「今天」里。"
           }
         }
       }
@@ -1769,6 +1803,23 @@
         }
       }
     },
+    "item.end_date": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Give it an end date"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改回有期限"
+          }
+        }
+      }
+    },
     "item.kept_for": {
       "extractionState": "manual",
       "localizations": {
@@ -1786,36 +1837,104 @@
         }
       }
     },
-    "item.no_expiry": {
+    "item.never_delete": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No expiry"
+            "value": "Never delete"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "不过期"
+            "value": "收藏（不过期）"
           }
         }
       }
     },
-    "item.unkeep": {
+    "item.never_deleted": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stop keeping"
+            "value": "Never deleted"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "取消收藏"
+            "value": "收藏了，不过期"
+          }
+        }
+      }
+    },
+    "item.not_assigned": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not assigned yet"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还没分派"
+          }
+        }
+      }
+    },
+    "item.said.changed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changes saved."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已保存。"
+          }
+        }
+      }
+    },
+    "item.said.days": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kept for %1$lld days, until %2$@."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留 %1$lld 天，到 %2$@ 删除。"
+          }
+        }
+      }
+    },
+    "item.said.never": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Never deleted."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏了，不过期。"
           }
         }
       }

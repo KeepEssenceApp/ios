@@ -252,7 +252,7 @@ struct WaitingRow: View {
     }
 
     private var triaged: String? {
-        let parts = [item.dispatchTo?.name, item.pinned == true ? L("action.keep") : item.daysLeft.map { L("item.days_left", $0) }].compactMap { $0 }
+        let parts = [item.dispatchTo?.name, item.pinned == true ? L("item.never_deleted") : item.daysLeft.map { L("item.days_left", $0) }].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
@@ -282,7 +282,8 @@ struct ItemDetailView: View {
                         AnalysisFields(analysis: a).card()
                     }
                     handling(item)
-                    if let tags = item.tags, !tags.isEmpty {
+                    // A kept item shows no `expiry:N` tag: header, control and tags agree.
+                    if case let tags = Retention.visibleTags(of: item), !tags.isEmpty {
                         Text(tags.joined(separator: "  ")).font(.system(size: Theme.Size.caption, design: .monospaced)).foregroundStyle(Theme.text3)
                     }
                     if model.isManager {
@@ -330,31 +331,44 @@ struct ItemDetailView: View {
     @ViewBuilder private func handling(_ item: Item) -> some View {
         VStack(spacing: 0) {
             row(L("item.analysed_by")) {
-                if model.isManager && !candidates.isEmpty {
+                // An item always has an assistant once it is dispatched: there is no "nobody" to pick.
+                let current = item.dispatchTo?.name ?? item.analysis?.assistant.name ?? L("item.not_assigned")
+                let list = Analysers.candidates(assistants, current: item.dispatchTo)
+                if model.isManager && !list.isEmpty {
                     Menu {
-                        ForEach(candidates) { a in Button(a.name) { Task { await update(dispatchTo: a.id) } } }
-                    } label: { Text(item.dispatchTo?.name ?? "—").underline() }
+                        ForEach(list, id: \.id) { a in
+                            Button(a.name ?? "") { Task { if let id = a.id { await update(dispatchTo: id) } } }
+                        }
+                    } label: { Text(current).underline() }
+                    .accessibilityIdentifier("item.analysed_by")
                 } else {
-                    Text(item.dispatchTo?.name ?? item.analysis?.assistant.name ?? "—")
+                    Text(current)
                 }
             }
             Rectangle().fill(Theme.line).frame(height: 1)
+            // One control for how long it is kept: the user's options, then "Never delete" last.
             row(L("item.kept_for")) {
-                if item.pinned == true {
-                    Text(L("item.no_expiry"))
-                } else if model.isManager && !expiryOptions.isEmpty {
+                if model.isManager && !expiryOptions.isEmpty {
                     Menu {
-                        ForEach(expiryOptions, id: \.self) { d in Button(L("item.days", d)) { Task { await update(expiryDays: d) } } }
+                        ForEach(Array(Retention.choices(options: expiryOptions).enumerated()), id: \.offset) { _, choice in
+                            Button(choiceText(choice)) { Task { await choose(choice) } }
+                        }
                     } label: { Text(keptText(item)).underline() }
+                    .accessibilityIdentifier("item.kept_for")
                 } else {
                     Text(keptText(item))
                 }
             }
-            Rectangle().fill(Theme.line).frame(height: 1)
-            row(L("action.keep")) {
-                Button(item.pinned == true ? L("item.unkeep") : L("action.keep")) { Task { await togglePin(item) } }
+            if !(model.isManager && !expiryOptions.isEmpty) {
+                // Without the options (not a manager), the one change left is named for what it does.
+                Rectangle().fill(Theme.line).frame(height: 1)
+                row("") {
+                    Button(item.pinned == true ? L("item.end_date") : L("item.never_delete")) {
+                        Task { await item.pinned == true ? endDate() : choose(.never) }
+                    }
                     .buttonStyle(QuietButton(small: true))
-                    .accessibilityIdentifier("item.keep")
+                    .accessibilityIdentifier("item.never_delete")
+                }
             }
         }
         .font(Theme.body)
@@ -371,9 +385,15 @@ struct ItemDetailView: View {
         .padding(.vertical, 12)
     }
 
-    private var candidates: [Assistant] { assistants.filter { $0.steps.contains(.analysis) && $0.kind != "chat" } }
+    private func choiceText(_ choice: Retention) -> String {
+        switch choice {
+        case .days(let d): return L("item.days", d)
+        case .never: return L("item.never_delete")
+        }
+    }
 
     private func keptText(_ item: Item) -> String {
+        if item.pinned == true { return L("item.never_deleted") }
         if let left = item.daysLeft { return L("item.days_left", left) }
         if let days = item.expiryDays { return L("item.days", days) }
         return "—"
@@ -390,21 +410,46 @@ struct ItemDetailView: View {
         }
     }
 
-    private func update(expiryDays: Int? = nil, dispatchTo: String? = nil) async {
-        if let it = await model.run({ try await model.client.updateItem(id: itemId, expiryDays: expiryDays, dispatchTo: dispatchTo) }) {
-            item = it
-            onChange()
+    private func update(dispatchTo: String) async {
+        if await model.run({ try await model.client.updateItem(id: itemId, dispatchTo: dispatchTo) }) != nil {
+            await reload()
+            model.say(L("item.said.changed"))
         }
     }
 
-    private func togglePin(_ it: Item) async {
+    /// Days give the item an end date (the core takes a kept item out of "never deleted" itself; an
+    /// older core needs the unpin first). "Never delete" keeps it without one.
+    private func choose(_ choice: Retention) async {
+        let wasPinned = item?.pinned == true
         let ok: Void? = await model.run {
-            if it.pinned == true { try await model.client.unpinItem(id: it.id) } else { try await model.client.pinItem(id: it.id) }
+            switch choice {
+            case .never:
+                try await model.client.pinItem(id: itemId)
+            case .days(let d):
+                let after = try await model.client.updateItem(id: itemId, expiryDays: d)
+                if wasPinned && after.pinned == true {
+                    try await model.client.unpinItem(id: itemId)
+                    _ = try await model.client.updateItem(id: itemId, expiryDays: d)
+                }
+            }
         }
-        if ok != nil {
-            await load()
-            onChange()
+        if ok != nil { await reload(sayRetention: true) }
+    }
+
+    private func endDate() async {
+        if await model.run({ try await model.client.unpinItem(id: itemId) }) != nil { await reload(sayRetention: true) }
+    }
+
+    /// After a change everything shown comes from the core again, and one sentence says what is now true.
+    private func reload(sayRetention: Bool = false) async {
+        if let it = await model.run({ try await model.client.getItem(id: itemId) }) {
+            item = it
+            if sayRetention {
+                let s = Retention.sentence(for: it)
+                if let days = s.days, let date = s.date { model.say(L(s.key, days, date)) } else { model.say(L(s.key)) }
+            }
         }
+        onChange()
     }
 
     private func delete() async {

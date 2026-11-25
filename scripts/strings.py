@@ -48,7 +48,6 @@ S = [
     ("action.not_interested", "不感兴趣", "Not interested"),
     ("action.seen", "看过了", "Seen"),
     ("action.restore", "挽回", "Restore"),
-    ("action.keep", "收藏", "Keep"),
     ("action.delete", "删除", "Delete"),
     ("action.download", "下载", "Download"),
     ("action.share", "分享", "Share"),
@@ -102,8 +101,15 @@ S = [
     ("item.kept_for", "保留多久", "Kept for"),
     ("item.days_left", "还剩 %lld 天", "%lld days left"),
     ("item.days", "%lld 天", "%lld days"),
-    ("item.no_expiry", "不过期", "No expiry"),
-    ("item.unkeep", "取消收藏", "Stop keeping"),
+    # One control for how long an item is kept: the options, then "Never delete" last. 收藏 extends
+    # an item's life to never expire; it is not a save button, so it is never a bare "Keep".
+    ("item.never_delete", "收藏（不过期）", "Never delete"),
+    ("item.end_date", "改回有期限", "Give it an end date"),
+    ("item.never_deleted", "收藏了，不过期", "Never deleted"),
+    ("item.not_assigned", "还没分派", "Not assigned yet"),
+    ("item.said.days", "保留 %1$lld 天，到 %2$@ 删除。", "Kept for %1$lld days, until %2$@."),
+    ("item.said.never", "收藏了，不过期。", "Never deleted."),
+    ("item.said.changed", "已保存。", "Changes saved."),
     ("item.delete.confirm", "删除后立刻消失，不能恢复。", "It disappears at once and cannot be restored."),
     # digest
     ("digest.counts", "存入了 %1$lld 条，%2$lld 条值得深挖", "%1$lld saved, %2$lld worth a deep dive"),
@@ -114,7 +120,17 @@ S = [
     ("digest.read", "读了，晚安", "Read. Good night"),
     ("digest.read_done", "读了", "Read"),
     ("digest.unread", "还没读", "Not read yet"),
-    ("digest.none", "还没有每日摘要。", "There is no daily digest yet."),
+    # No daily digest: when it comes, what it needs, where today's analyses are meanwhile.
+    ("digest.none", "还没有每日摘要。每天一份，当天至少有一条解读好的条目时，在 21:00（%@）之后出；漏掉的一天并进下一份。",
+     "No daily digest yet. There is one a day, written after 21:00 (%@) when the day has at least one analysed item; a missed day is folded into the next one."),
+    ("digest.none.not_yet_time", "今天的每日摘要在 21:00（%@）之后出。它需要今天至少有一条解读好的条目。在那之前，今天的解读都在「今天」里。",
+     "Today's daily digest is written after 21:00 (%@). It needs at least one analysed item from today. Until then, today's analyses are in Today."),
+    ("digest.none.nothing_analysed", "今天还没有每日摘要：它需要至少一条解读好的条目，而今天的条目都还没解读。有了解读，每日摘要在 21:00（%@）之后出。",
+     "No daily digest today yet: it needs at least one analysed item, and none of today's items is analysed. Once one is, the digest is written after 21:00 (%@)."),
+    ("digest.none.no_assistant", "没有指定出每日摘要的助手，所以不会有每日摘要。今天的解读都在「今天」里。",
+     "No assistant is set to write the daily digest, so none is written. Today's analyses are in Today."),
+    ("digest.none.waiting", "今天的每日摘要该出了：助手下次来时就出。在那之前，今天的解读都在「今天」里。",
+     "Today's daily digest is due: it is written when the assistant next comes. Until then, today's analyses are in Today."),
     # notes and the queue
     ("notes.find", "快速查找", "Quick find"),
     ("notes.none", "还没有笔记。深挖之后存回来的笔记在这里。", "No notes yet. Notes saved from a deep dive appear here."),
@@ -166,7 +182,7 @@ S = [
     ("connect.content_goes", "接入之后，内容会被送到这个助手运行的地方。", "Once connected, your content is sent to where that assistant runs."),
     ("connect.pick", "选一个产品", "Pick a product"),
     ("connect.own", "自己部署的 agent", "Your own agent"),
-    ("connect.unverified", "待验证", "Not verified yet"),
+    ("connect.unverified_list", "待验证：%@。", "Not verified yet: %@."),
     ("connect.claude.kind", "对话型：只做深挖", "Chat: deep dives only"),
     ("connect.claude.1", "打开 Claude 的 Connectors，点 Add → Add custom connector。", "Open Connectors in Claude and choose Add → Add custom connector."),
     ("connect.claude.2", "名字填 KeepEssence，地址粘贴接入地址，点 Continue。", "Name it KeepEssence, paste the connect address, and choose Continue."),
@@ -194,7 +210,6 @@ S = [
     ("connect.own.2", "它打开 KeepEssence 的允许页，点「允许」。", "It opens the KeepEssence allow page. Press Allow."),
     ("connect.own.3", "给它设一个定时任务：每次来先问有什么活，认领，做完交回。", "Give it a timetable: each time it asks what work there is, claims it, and hands it back when done."),
     ("connect.own.note", "它要支持 MCP 和 OAuth。", "It needs to support MCP and OAuth."),
-    ("connect.muse.kind", "定时型：解读、汇总、深挖", "Scheduled: analysis, daily digest, deep dives"),
     # rules
     ("rules.intro", "写给分派助手的话：什么样的条目交给谁、保留多久。", "What you tell the dispatch assistant: which items go to whom, and how long they are kept."),
     ("rules.expiry", "保留多久的档位（天）", "Options for how long items are kept (days)"),
@@ -271,7 +286,10 @@ def problems():
     used = set()
     for folder in ("App", "ShareExtension", "KeepCore/Sources"):
         for f in (ROOT / folder).rglob("*.swift"):
-            used |= set(re.findall(r'\bL\("([^"]+)"', f.read_text()))
+            text = f.read_text()
+            used |= set(re.findall(r'\bL\("([^"]+)"', text))
+            # A key chosen in code and passed to L() later is a plain string literal there.
+            used |= set(re.findall(r'"([a-z0-9_.]+)"', text)) & set(keys)
     for k in sorted(used):
         if "\\(" in k:      # built at run time: connect.<product>.<n>
             continue

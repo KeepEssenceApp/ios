@@ -252,7 +252,7 @@ struct WaitingRow: View {
     }
 
     private var triaged: String? {
-        let parts = [item.dispatchTo?.name, item.pinned == true ? L("item.never_deleted") : item.daysLeft.map { L("item.days_left", $0) }].compactMap { $0 }
+        let parts = [item.dispatchTo?.name, item.pinned == true ? L("item.never_deleted") : Retention.daysLeft(of: item).map { L("item.days_left", $0) }].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
@@ -269,6 +269,10 @@ struct ItemDetailView: View {
     @State private var expiryOptions: [Int] = []
     @State private var imageURL: URL?
     @State private var confirmDelete = false
+    /// What this page itself has chosen since it was opened. The core does not say who set a
+    /// value, so this is all the page knows for certain about an item that is sorted (QA #32).
+    @State private var choseRetention = false
+    @State private var choseAssistant = false
 
     var body: some View {
         ScrollView {
@@ -282,6 +286,9 @@ struct ItemDetailView: View {
                         AnalysisFields(analysis: a).card()
                     }
                     handling(item)
+                    if let note = handlingNote(item) {
+                        Text(note).font(Theme.caption).foregroundStyle(Theme.text3).accessibilityIdentifier("item.handling_note")
+                    }
                     // A kept item shows no `expiry:N` tag: header, control and tags agree.
                     if case let tags = Retention.visibleTags(of: item), !tags.isEmpty {
                         Text(tags.joined(separator: "  ")).font(.system(size: Theme.Size.caption, design: .monospaced)).foregroundStyle(Theme.text3)
@@ -392,8 +399,20 @@ struct ItemDetailView: View {
         }
     }
 
+    /// Under the two controls (QA #32): before sorting, that nothing is decided yet; after it,
+    /// who set the values the user has not chosen here.
+    private func handlingNote(_ item: Item) -> String? {
+        if !Retention.decided(item) { return L("item.undecided_hint", Retention.placeholderDays) }
+        guard item.stage != "saved" else { return nil }
+        let retention = item.pinned != true && !choseRetention
+        let assistant = item.dispatchTo != nil && !choseAssistant
+        return retention || assistant ? L("item.set_by_sorting") : nil
+    }
+
     private func keptText(_ item: Item) -> String {
         if item.pinned == true { return L("item.never_deleted") }
+        // Not sorted yet and not chosen: a state, not a number of days.
+        if !Retention.decided(item) { return L("item.decided_when_sorted") }
         if let left = item.daysLeft { return L("item.days_left", left) }
         if let days = item.expiryDays { return L("item.days", days) }
         return "—"
@@ -412,6 +431,7 @@ struct ItemDetailView: View {
 
     private func update(dispatchTo: String) async {
         if await model.run({ try await model.client.updateItem(id: itemId, dispatchTo: dispatchTo) }) != nil {
+            choseAssistant = true
             await reload()
             model.say(L("item.said.changed"))
         }
@@ -433,11 +453,17 @@ struct ItemDetailView: View {
                 }
             }
         }
-        if ok != nil { await reload(sayRetention: true) }
+        if ok != nil {
+            choseRetention = true
+            await reload(sayRetention: true)
+        }
     }
 
     private func endDate() async {
-        if await model.run({ try await model.client.unpinItem(id: itemId) }) != nil { await reload(sayRetention: true) }
+        if await model.run({ try await model.client.unpinItem(id: itemId) }) != nil {
+            choseRetention = true
+            await reload(sayRetention: true)
+        }
     }
 
     /// After a change everything shown comes from the core again, and one sentence says what is now true.

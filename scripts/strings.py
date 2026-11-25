@@ -107,6 +107,10 @@ S = [
     ("item.end_date", "改回有期限", "Give it an end date"),
     ("item.never_deleted", "收藏了，不过期", "Never deleted"),
     ("item.not_assigned", "还没分派", "Not assigned yet"),
+    # QA #32: how long an item is kept is decided when it is sorted
+    ("item.decided_when_sorted", "初筛时定", "Decided when it is sorted"),
+    ("item.undecided_hint", "你不选的话，保留多久在初筛时定：%lld 天，或者按你的规则。", "Unless you choose, how long this is kept is decided when the item is sorted: %lld days, or what your rules say."),
+    ("item.set_by_sorting", "初筛时定的。另选一个就改。", "Set when the item was sorted. Choose another to change it."),
     ("item.said.days", "保留 %1$lld 天，到 %2$@ 删除。", "Kept for %1$lld days, until %2$@."),
     ("item.said.never", "收藏了，不过期。", "Never deleted."),
     ("item.said.changed", "已保存。", "Changes saved."),

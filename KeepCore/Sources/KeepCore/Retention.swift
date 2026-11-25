@@ -13,10 +13,28 @@ public enum Retention: Equatable, Sendable {
         return options.filter { $0 >= 1 && seen.insert($0).inserted }.map { Retention.days($0) } + [.never]
     }
 
-    /// What is true of the item now. Nil when the core has not said how long it is kept.
+    /// The days the core stores for an item until the dispatch step has sorted it. Not a decision.
+    public static let placeholderDays = 30
+
+    /// Whether how long the item is kept has been decided (QA #32). The dispatch step decides it
+    /// when it sorts the item; until then the core only stores a placeholder, which is never shown
+    /// as if it were a decision. A value the user chose is one: before sorting, the core lists an
+    /// `expiry:` tag only for that. In a list (no tags) an item that is not sorted is undecided.
+    public static func decided(_ item: Item) -> Bool {
+        if item.stage != "saved" || item.pinned == true { return true }
+        return (item.tags ?? []).contains { $0.hasPrefix("expiry:") }
+    }
+
+    /// The days left to show: none for an item that is never deleted, and none before it is decided.
+    public static func daysLeft(of item: Item) -> Int? {
+        item.pinned == true || !decided(item) ? nil : item.daysLeft
+    }
+
+    /// What is true of the item now. Nil when the core has not said how long it is kept, and
+    /// before that is decided.
     public static func current(of item: Item) -> Retention? {
         if item.pinned == true { return .never }
-        return item.expiryDays.map { .days($0) }
+        return decided(item) ? item.expiryDays.map { .days($0) } : nil
     }
 
     /// The day the item is deleted: the core's own moment when it gives one, else counted from the
@@ -30,7 +48,7 @@ public enum Retention: Equatable, Sendable {
     /// The tags to show. A kept item has no end date, so an `expiry:N` tag is not shown as if it applied.
     public static func visibleTags(of item: Item) -> [String] {
         let tags = item.tags ?? []
-        return item.pinned == true ? tags.filter { !$0.hasPrefix("expiry:") } : tags
+        return item.pinned == true || !decided(item) ? tags.filter { !$0.hasPrefix("expiry:") } : tags
     }
 
     /// The one sentence after a change: the key of the string and what fills it.

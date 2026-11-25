@@ -1786,6 +1786,23 @@
         }
       }
     },
+    "item.decided_when_sorted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decided when it is sorted"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "初筛时定"
+          }
+        }
+      }
+    },
     "item.delete.confirm": {
       "extractionState": "manual",
       "localizations": {
@@ -1935,6 +1952,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "收藏了，不过期。"
+          }
+        }
+      }
+    },
+    "item.set_by_sorting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set when the item was sorted. Choose another to change it."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "初筛时定的。另选一个就改。"
+          }
+        }
+      }
+    },
+    "item.undecided_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unless you choose, how long this is kept is decided when the item is sorted: %lld days, or what your rules say."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你不选的话，保留多久在初筛时定：%lld 天，或者按你的规则。"
           }
         }
       }

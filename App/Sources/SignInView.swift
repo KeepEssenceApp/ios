@@ -22,8 +22,11 @@ struct SignInView: View {
             Theme.black.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    BrandMark(forceDark: true, size: 64).padding(.top, 48)
-                    Text("KeepEssence").font(Theme.display).foregroundStyle(Theme.white)
+                    HStack(alignment: .center, spacing: 14) {
+                        BrandMark(forceDark: true, size: 52)
+                        BrandName(size: 28)
+                    }
+                    .padding(.top, 48)
                     if codeSent { codeStep } else { emailStep }
                     if let problem {
                         Text(problem).font(Theme.secondary).foregroundStyle(Theme.paper).accessibilityIdentifier("signin.problem")

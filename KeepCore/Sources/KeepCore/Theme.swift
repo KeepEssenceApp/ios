@@ -42,8 +42,9 @@ public enum Theme {
     public static let black = color("black")
     public static let white = color("white")
     public static let paper = color("paper")
-    /// Only for what was kept: a note, a "worth a deep dive" verdict, an unread daily digest, a
-    /// calendar day with a note. On light backgrounds a dot or a block, never text.
+    /// The brand accent. For what was kept (a note, a "worth a deep dive" verdict, an unread daily
+    /// digest, a calendar day with a note) and for the short line above the selected tab. Never a
+    /// button, link, divider or decoration, and never body text on a light background.
     public static let gold = color("gold")
 
     public enum Radius {

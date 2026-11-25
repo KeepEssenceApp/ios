@@ -190,7 +190,7 @@ struct ShareSheetView: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .center, spacing: 12) {
                     Image(scheme == .dark ? "MarkOnDark" : "MarkOnLight")
-                        .resizable().scaledToFit().frame(width: 28, height: 28)
+                        .resizable().scaledToFit().frame(height: 28)
                         .accessibilityHidden(true)
                     content
                     Spacer(minLength: 0)

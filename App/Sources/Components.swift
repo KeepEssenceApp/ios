@@ -578,7 +578,8 @@ struct NoticeBar: View {
     }
 }
 
-/// The mark of the logo: white lines on dark, black lines on light. The dot is always gold.
+/// The brand's mark, from its own files: white on dark, black on light, one gold dot. `size` is its
+/// height. Under 28 points the brand asks for the small variant, which this app does not carry.
 struct BrandMark: View {
     @Environment(\.colorScheme) private var scheme
     var forceDark = false
@@ -587,7 +588,23 @@ struct BrandMark: View {
         Image(forceDark || scheme == .dark ? "MarkOnDark" : "MarkOnLight")
             .resizable()
             .scaledToFit()
-            .frame(width: size, height: size)
+            .frame(height: size)
             .accessibilityHidden(true)
+    }
+}
+
+/// The name beside the mark is always text: weight 700, letter-spacing 0.04em. English with a
+/// space, and the Chinese name beneath.
+struct BrandName: View {
+    var size: CGFloat = Theme.Size.display
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(verbatim: "Keep Essence").font(.system(size: size, weight: .bold)).tracking(size * 0.04)
+                .foregroundStyle(Theme.white)
+            Text(verbatim: "精华").font(.system(size: Theme.Size.body, weight: .bold)).tracking(Theme.Size.body * 0.04)
+                .foregroundStyle(Theme.paper.opacity(0.7))
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Keep Essence")
     }
 }

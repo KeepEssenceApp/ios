@@ -37,7 +37,8 @@ struct RootView: View {
 }
 
 /// Four entries in a fixed order. A read-tier device does not get the last one. An unread digest
-/// puts one dot on its entry; there are no numbers anywhere.
+/// puts one gold dot on its entry; the selected entry has a short gold line above its icon. There
+/// are no numbers anywhere.
 struct MainView: View {
     @EnvironmentObject var model: AppModel
 
@@ -92,11 +93,14 @@ struct TabBar: View {
 
     private func label(_ tab: AppTab) -> some View {
         let on = model.tab == tab
-        return VStack(spacing: 5) {
+        // Selected: the main text colour, a bolder label and one short gold line above the icon.
+        return VStack(spacing: 4) {
+            Capsule().fill(on ? Theme.gold : Color.clear).frame(width: 18, height: 3)
+                .accessibilityHidden(true)
             ZStack(alignment: .topTrailing) {
-                TabGlyph(tab: tab, on: on).frame(width: 20, height: 20)
+                TabGlyph(tab: tab).frame(width: 24, height: 24)
                 if tab == .digest && model.digestUnread {
-                    Circle().fill(Theme.gold).frame(width: 8, height: 8).offset(x: 7, y: -4)
+                    Circle().fill(Theme.gold).frame(width: 8, height: 8).offset(x: 5, y: -2)
                         .accessibilityIdentifier("tab.digest.dot")
                         .accessibilityLabel(L("digest.unread"))
                 }
@@ -105,39 +109,26 @@ struct TabBar: View {
         }
         .foregroundStyle(on ? Theme.text : Theme.text3)
         .frame(maxWidth: .infinity)
-        .padding(.top, 9)
+        .padding(.top, 5)
         .padding(.bottom, 4)
         .contentShape(Rectangle())
     }
 }
 
-/// Glyphs drawn from the shapes of the logo, with square line ends: a square for today, lines that
-/// get shorter for the digest, a circle for what was kept, a triangle for the assistants.
+/// The brand's four tab icons (24×24, stroke 1.8), template-rendered so they take the label's colour.
 struct TabGlyph: View {
     let tab: AppTab
-    let on: Bool
 
     var body: some View {
-        let style = StrokeStyle(lineWidth: on ? 2.2 : 1.6, lineCap: .butt, lineJoin: .miter)
+        Image(name).renderingMode(.template).resizable().scaledToFit()
+    }
+
+    private var name: String {
         switch tab {
-        case .today:
-            Rectangle().stroke(style: style).padding(2)
-        case .digest:
-            GeometryReader { g in
-                Path { p in
-                    let w = g.size.width, h = g.size.height
-                    for (i, len) in [1.0, 0.72, 0.44].enumerated() {
-                        let y = h * (0.2 + 0.3 * Double(i))
-                        p.move(to: CGPoint(x: 1, y: y))
-                        p.addLine(to: CGPoint(x: 1 + (w - 2) * len, y: y))
-                    }
-                }
-                .stroke(style: style)
-            }
-        case .notes:
-            Circle().stroke(style: style).padding(2)
-        case .assistants:
-            Triangle().stroke(style: style).padding(2)
+        case .today: return "TabToday"
+        case .digest: return "TabDigest"
+        case .notes: return "TabNotes"
+        case .assistants: return "TabAssistants"
         }
     }
 }

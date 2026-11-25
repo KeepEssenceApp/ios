@@ -24,6 +24,7 @@
     "queue_idle_days": 7,
     "analysis_summary_max_chars": 60,
     "analysis_points_max": 3,
+    "digest_hour": 21,
     "notify_wait_seconds": 120,
     "notify_max_wait_seconds": 600,
     "text_max_chars": 200000

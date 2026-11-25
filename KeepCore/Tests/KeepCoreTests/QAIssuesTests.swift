@@ -40,6 +40,48 @@ final class QAIssuesTests: XCTestCase {
         XCTAssertEqual(Retention.visibleTags(of: dated), ["expiry:90", "source:web"])
     }
 
+    /// QA #32: how long an item is kept is decided when it is sorted. Until then no days are shown
+    /// and no expiry tag; a value the user chose before that is a decision and is shown.
+    func testQA32_noDaysLeftBeforeTheItemIsSorted() throws {
+        let fresh = #""id":"i2","kind":"text","title":"A note","created_at":"2026-11-25T07:00:00Z""#
+        // Freshly saved: the core stores 30 as a placeholder. In a list (no tags) and on its page.
+        let row = try item("{\(fresh),\"stage\":\"saved\",\"pinned\":false,\"days_left\":30}")
+        XCTAssertFalse(Retention.decided(row))
+        XCTAssertNil(Retention.daysLeft(of: row))
+        let page = try item("{\(fresh),\"stage\":\"saved\",\"pinned\":false,\"days_left\":30,\"expiry_days\":30,\"tags\":[\"source:web\"]}")
+        XCTAssertFalse(Retention.decided(page))
+        XCTAssertNil(Retention.daysLeft(of: page))
+        XCTAssertNil(Retention.current(of: page))
+        XCTAssertEqual(Retention.visibleTags(of: page), ["source:web"])
+
+        // The user chose before sorting: the core lists the tag, and it is shown as decided.
+        let chosen = try item("{\(fresh),\"stage\":\"saved\",\"pinned\":false,\"days_left\":90,\"expiry_days\":90,\"tags\":[\"expiry:90\",\"source:web\"]}")
+        XCTAssertTrue(Retention.decided(chosen))
+        XCTAssertEqual(Retention.daysLeft(of: chosen), 90)
+        XCTAssertEqual(Retention.current(of: chosen), .days(90))
+        XCTAssertEqual(Retention.visibleTags(of: chosen), ["expiry:90", "source:web"])
+        let kept = try item("{\(fresh),\"stage\":\"saved\",\"pinned\":true,\"days_left\":null,\"expiry_days\":null,\"tags\":[\"source:web\"]}")
+        XCTAssertTrue(Retention.decided(kept))
+        XCTAssertEqual(Retention.current(of: kept), .never)
+        XCTAssertNil(Retention.daysLeft(of: kept))
+
+        // Sorted: the days are the dispatch step's decision and are shown, in a list too.
+        for stage in ["triaged", "analysed"] {
+            let sorted = try item("{\(fresh),\"stage\":\"\(stage)\",\"pinned\":false,\"days_left\":7,\"expiry_days\":7,\"tags\":[\"expiry:7\",\"source:web\"]}")
+            XCTAssertTrue(Retention.decided(sorted))
+            XCTAssertEqual(Retention.daysLeft(of: sorted), 7)
+            XCTAssertEqual(Retention.current(of: sorted), .days(7))
+            XCTAssertEqual(Retention.visibleTags(of: sorted), ["expiry:7", "source:web"])
+            XCTAssertEqual(Retention.daysLeft(of: try item("{\(fresh),\"stage\":\"\(stage)\",\"days_left\":7}")), 7)
+        }
+
+        XCTAssertEqual(Retention.placeholderDays, 30)
+        XCTAssertEqual(try text("item.decided_when_sorted", "en"), "Decided when it is sorted")
+        XCTAssertEqual(try text("item.decided_when_sorted", "zh-Hans"), "初筛时定")
+        XCTAssertEqual(try text("item.undecided_hint", "en"), "Unless you choose, how long this is kept is decided when the item is sorted: %lld days, or what your rules say.")
+        XCTAssertEqual(try text("item.set_by_sorting", "en"), "Set when the item was sorted. Choose another to change it.")
+    }
+
     /// QA #7: every retention change is said in one sentence that is exactly true: the days and the day it ends.
     func testQA7_theSentenceNamesTheDaysAndTheEndDate() throws {
         // The core's own moment wins when it gives one.

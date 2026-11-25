@@ -97,7 +97,7 @@ S = [
     ("today.rest", "其余的 · %lld", "The rest · %lld"),
     ("today.waiting", "还没有解读的条目 · %lld", "Items without an analysis yet · %lld"),
     # item
-    ("item.analysed_by", "交给哪个助手", "Analysed by"),
+    ("item.analysed_by", "交给哪个助手", "Given to"),
     ("item.kept_for", "保留多久", "Kept for"),
     ("item.days_left", "还剩 %lld 天", "%lld days left"),
     ("item.days", "%lld 天", "%lld days"),

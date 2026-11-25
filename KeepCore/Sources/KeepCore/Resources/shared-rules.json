@@ -29,7 +29,8 @@
     "digest_hour": 21,
     "notify_wait_seconds": 120,
     "notify_max_wait_seconds": 600,
-    "text_max_chars": 200000
+    "text_max_chars": 200000,
+    "feedback_per_user_per_day": 20
   },
   "shared_rules": {
     "secret_like": {

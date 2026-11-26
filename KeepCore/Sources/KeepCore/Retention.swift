@@ -1,8 +1,8 @@
 import Foundation
 
 /// How long one item is kept. There is one control for it: the user's expiry options, then
-/// "Never delete" as the last choice. The header, the control and the tags are all read from here,
-/// so they cannot disagree.
+/// "Never delete" as the last choice. The header and the control are both read from here, so they
+/// cannot disagree. Tags are never shown to the user (rule A6); the `expiry:` tag is only read, below.
 public enum Retention: Equatable, Sendable {
     case days(Int)
     case never
@@ -43,12 +43,6 @@ public enum Retention: Equatable, Sendable {
         if item.pinned == true { return nil }
         if let at = item.expiresAt { return at }
         return item.daysLeft.map { now.addingTimeInterval(TimeInterval($0) * 86400) }
-    }
-
-    /// The tags to show. A kept item has no end date, so an `expiry:N` tag is not shown as if it applied.
-    public static func visibleTags(of item: Item) -> [String] {
-        let tags = item.tags ?? []
-        return item.pinned == true || !decided(item) ? tags.filter { !$0.hasPrefix("expiry:") } : tags
     }
 
     /// The one sentence after a change: the key of the string and what fills it.

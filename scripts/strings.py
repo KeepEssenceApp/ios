@@ -262,9 +262,10 @@ S = [
     ("share.image_unreadable", "图片读不出来", "the image could not be read"),
 ]
 
-# Words the glossary and design/terms.md ban from the interface.
-BANNED_ZH = ["书签", "知识库", "存档", "搜索", "分类", "文件夹", "主题", "喜欢", "首页", "设置", "钥匙", "暂存", "攒存"]
-BANNED_EN = ["bookmark", "knowledge base", "archive", "search", "category", "folder", "topic", "like", "home", "settings", "token", "api key"]
+# Words the glossary and design/terms.md ban from the interface, and 标签 / tag(s): the user is not
+# told that tags exist (rule A6, Cheney 2026-11-26).
+BANNED_ZH = ["书签", "知识库", "存档", "搜索", "分类", "文件夹", "主题", "喜欢", "首页", "设置", "钥匙", "暂存", "攒存", "标签"]
+BANNED_EN = ["bookmark", "knowledge base", "archive", "search", "category", "folder", "topic", "like", "home", "settings", "token", "api key", "tag", "tags"]
 ALLOWED_ZH = {"tab.assistants": ["设置"]}   # 「助手设置」 is the entry's own name in the glossary
 
 

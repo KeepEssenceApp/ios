@@ -257,7 +257,8 @@ struct WaitingRow: View {
     }
 }
 
-/// One item: the original, the analysis, the tags; who analyses it and how long it is kept; keep and delete.
+/// One item: the original, the analysis; who analyses it and how long it is kept; keep and delete.
+/// Tags are never shown, and the user is never told they exist (rule A6).
 struct ItemDetailView: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
@@ -288,10 +289,6 @@ struct ItemDetailView: View {
                     handling(item)
                     if let note = handlingNote(item) {
                         Text(note).font(Theme.caption).foregroundStyle(Theme.text3).accessibilityIdentifier("item.handling_note")
-                    }
-                    // A kept item shows no `expiry:N` tag: header, control and tags agree.
-                    if case let tags = Retention.visibleTags(of: item), !tags.isEmpty {
-                        Text(tags.joined(separator: "  ")).font(.system(size: Theme.Size.caption, design: .monospaced)).foregroundStyle(Theme.text3)
                     }
                     if model.isManager {
                         Button(L("action.delete")) { confirmDelete = true }

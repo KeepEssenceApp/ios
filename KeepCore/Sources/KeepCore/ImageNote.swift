@@ -28,3 +28,10 @@ public struct ImageNote: Equatable, Sendable {
         return outcome
     }
 }
+
+extension ImageNote {
+    /// A size limit in whole MiB (1,048,576 bytes), the unit it really is in: 3,145,728 bytes is 3 MiB, not 3 MB
+    /// (which is 3,000,000). Rounded down, because the sentence it goes in says "over N": that stays true of every
+    /// picture that is refused, and a limit that is not a whole number of MiB is never named as a larger one.
+    public static func mebibytes(_ bytes: Int) -> Int { max(0, bytes) / 1_048_576 }
+}

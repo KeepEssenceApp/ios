@@ -75,7 +75,7 @@ final class ShareModel: ObservableObject {
                 image = prepared
                 if ImagePrep.isAnimation(data) { imageNote = ImageNote(after: L("share.gif_one_frame")) }
             case .tooLarge:
-                if shared.url == nil && shared.text == nil { return finish(.failed, L("share.image_too_large", Int((Double(maxBytes) / 1_048_576).rounded())), after: 3.2) }
+                if shared.url == nil && shared.text == nil { return finish(.failed, L("share.image_too_large", ImageNote.mebibytes(maxBytes)), after: 3.2) }
                 imageNote = ImageNote(instead: shared.url != nil ? L("share.image_only_link") : L("share.image_only_text"))
             case .unreadable:
                 if shared.url == nil && shared.text == nil { return finish(.failed, L("share.image_unreadable"), after: 3.2) }

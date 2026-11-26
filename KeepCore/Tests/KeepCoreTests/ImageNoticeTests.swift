@@ -39,7 +39,8 @@ final class ImageNoticeTests: XCTestCase {
         XCTAssertEqual(try text("share.image_note", "en"), "Images are compressed before saving; the original stays on your phone.")
         XCTAssertEqual(try text("share.image_only_link", "zh-Hans"), "图片没能存入，只存入了链接。")
         XCTAssertEqual(try text("share.image_only_text", "zh-Hans"), "图片没能存入，只存入了文字。")
-        XCTAssertEqual(try text("share.image_too_large", "zh-Hans"), "图片太大，压缩后仍超过 %lld MB，没有存入。")
+        XCTAssertEqual(try text("share.image_too_large", "zh-Hans"), "图片太大，压缩后仍超过 %lld MiB，没有存入。")
+        XCTAssertEqual(try text("share.image_too_large", "en"), "This image is too large even after compression (over %lld MiB), so it wasn't saved.")
         XCTAssertEqual(try text("share.image_unreadable", "zh-Hans"), "这张图片读不出来，没有存入。")
         XCTAssertEqual(try text("share.image_failed", "zh-Hans"), "这张图片没能存入（太大或读不出来）。")
         XCTAssertEqual(try text("share.image_failed", "en"), "This image couldn't be saved (too large or unreadable).")
@@ -47,6 +48,23 @@ final class ImageNoticeTests: XCTestCase {
         XCTAssertEqual(try text("share.gif_one_frame", "zh-Hans"), "动图只保留了一帧。")
         XCTAssertFalse(try text("share.gif_one_frame", "zh-Hans").contains("第一"))
         XCTAssertFalse(try text("share.gif_one_frame", "en").lowercased().contains("first"))
+    }
+
+    /// The limit is written in the unit it is in. 3,145,728 bytes (the contract's value, also the code's fallback) is 3 MiB.
+    func testTheLimitIsNamedInMebibytesAndNeverAsMegabytes() throws {
+        XCTAssertEqual(ImageNote.mebibytes(3_145_728), 3)
+        XCTAssertEqual(ImageNote.mebibytes(Meta.bundled.limit("asset_max_bytes") ?? 0), 3)
+        XCTAssertEqual(ImageNote.mebibytes(5 * 1_048_576), 5)
+        // Rounded down: "over N MiB" is true of everything refused. 3,000,000 bytes is 2.86 MiB, not 3.
+        XCTAssertEqual(ImageNote.mebibytes(3_000_000), 2)
+        XCTAssertEqual(ImageNote.mebibytes(3_145_729), 3)
+        XCTAssertEqual(ImageNote.mebibytes(0), 0)
+        XCTAssertEqual(ImageNote.mebibytes(-5), 0)
+        for lang in ["zh-Hans", "en"] {
+            let s = try text("share.image_too_large", lang)
+            XCTAssertTrue(s.contains("%lld MiB"), lang)
+            XCTAssertFalse(s.contains(" MB"), lang)
+        }
     }
 
     func testNothingPromisesWhatWasNotChecked() throws {

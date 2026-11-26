@@ -260,11 +260,12 @@ S = [
     ("share.dont_save", "不存入", "Don't save"),
     ("share.nothing", "没有能存入的内容", "there was nothing to save"),
     # What the share sheet says about a picture (QA #87). A static line, not part of the sentence of a save;
-    # and the sentences of the pictures that were not saved as shared. The number is the limit the code uses.
+    # and the sentences of the pictures that were not saved as shared. The number is the limit the code uses, in MiB
+    # (3,145,728 bytes is 3 MiB; not written MB).
     ("share.image_note", "图片会压缩后存入，原图留在你的手机上。", "Images are compressed before saving; the original stays on your phone."),
     ("share.image_only_link", "图片没能存入，只存入了链接。", "The image couldn't be saved; only the link was."),
     ("share.image_only_text", "图片没能存入，只存入了文字。", "The image couldn't be saved; only the text was."),
-    ("share.image_too_large", "图片太大，压缩后仍超过 %lld MB，没有存入。", "This image is too large even after compression (over %lld MB), so it wasn't saved."),
+    ("share.image_too_large", "图片太大，压缩后仍超过 %lld MiB，没有存入。", "This image is too large even after compression (over %lld MiB), so it wasn't saved."),
     ("share.image_unreadable", "这张图片读不出来，没有存入。", "This image couldn't be read, so it wasn't saved."),
     ("share.image_failed", "这张图片没能存入（太大或读不出来）。", "This image couldn't be saved (too large or unreadable)."),
     ("share.gif_one_frame", "动图只保留了一帧。", "Only one frame of the animation was kept."),

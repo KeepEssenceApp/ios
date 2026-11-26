@@ -27,21 +27,19 @@ final class QAIssuesTests: XCTestCase {
         XCTAssertEqual(Retention.choices(options: [30, 30, 0]), [.days(30), .never])
     }
 
-    /// QA #7: a kept item shows no `expiry:N` tag; an item with an end date shows its own.
-    func testQA7_aKeptItemShowsNoExpiryTag() throws {
+    /// QA #7: a kept item is never deleted; an item with an end date has its own days.
+    func testQA7_aKeptItemIsNeverDeleted() throws {
         let kept = try item("{\(base),\"pinned\":true,\"days_left\":null,\"expiry_days\":null,\"tags\":[\"assistant:Built-in assistant\",\"expiry:90\",\"source:web\"]}")
         XCTAssertEqual(Retention.current(of: kept), .never)
-        XCTAssertEqual(Retention.visibleTags(of: kept), ["assistant:Built-in assistant", "source:web"])
         XCTAssertNil(Retention.until(kept))
         XCTAssertEqual(Retention.sentence(for: kept).key, "item.said.never")
 
         let dated = try item("{\(base),\"pinned\":false,\"days_left\":90,\"expiry_days\":90,\"tags\":[\"expiry:90\",\"source:web\"]}")
         XCTAssertEqual(Retention.current(of: dated), .days(90))
-        XCTAssertEqual(Retention.visibleTags(of: dated), ["expiry:90", "source:web"])
     }
 
     /// QA #32: how long an item is kept is decided when it is sorted. Until then no days are shown
-    /// and no expiry tag; a value the user chose before that is a decision and is shown.
+    /// shown; a value the user chose before that is a decision and is shown.
     func testQA32_noDaysLeftBeforeTheItemIsSorted() throws {
         let fresh = #""id":"i2","kind":"text","title":"A note","created_at":"2026-11-25T07:00:00Z""#
         // Freshly saved: the core stores 30 as a placeholder. In a list (no tags) and on its page.
@@ -52,14 +50,12 @@ final class QAIssuesTests: XCTestCase {
         XCTAssertFalse(Retention.decided(page))
         XCTAssertNil(Retention.daysLeft(of: page))
         XCTAssertNil(Retention.current(of: page))
-        XCTAssertEqual(Retention.visibleTags(of: page), ["source:web"])
 
         // The user chose before sorting: the core lists the tag, and it is shown as decided.
         let chosen = try item("{\(fresh),\"stage\":\"saved\",\"pinned\":false,\"days_left\":90,\"expiry_days\":90,\"tags\":[\"expiry:90\",\"source:web\"]}")
         XCTAssertTrue(Retention.decided(chosen))
         XCTAssertEqual(Retention.daysLeft(of: chosen), 90)
         XCTAssertEqual(Retention.current(of: chosen), .days(90))
-        XCTAssertEqual(Retention.visibleTags(of: chosen), ["expiry:90", "source:web"])
         let kept = try item("{\(fresh),\"stage\":\"saved\",\"pinned\":true,\"days_left\":null,\"expiry_days\":null,\"tags\":[\"source:web\"]}")
         XCTAssertTrue(Retention.decided(kept))
         XCTAssertEqual(Retention.current(of: kept), .never)
@@ -71,7 +67,6 @@ final class QAIssuesTests: XCTestCase {
             XCTAssertTrue(Retention.decided(sorted))
             XCTAssertEqual(Retention.daysLeft(of: sorted), 7)
             XCTAssertEqual(Retention.current(of: sorted), .days(7))
-            XCTAssertEqual(Retention.visibleTags(of: sorted), ["expiry:7", "source:web"])
             XCTAssertEqual(Retention.daysLeft(of: try item("{\(fresh),\"stage\":\"\(stage)\",\"days_left\":7}")), 7)
         }
 
@@ -113,6 +108,36 @@ final class QAIssuesTests: XCTestCase {
         for key in strings.keys {
             XCTAssertNotEqual(try text(key, "en"), "Keep", key)
             XCTAssertNotEqual(try text(key, "zh-Hans"), "收藏", key)
+        }
+    }
+
+    /// QA #94 (rule A6, Cheney 2026-11-26): the user is not told that tags exist. No string of the
+    /// interface says 标签 or "tag", and nothing in the app's own code reads an item's tags: that
+    /// stays in KeepCore, which only reads the `expiry:` tag to know whether the user chose the days.
+    func testQA94_theUserIsNeverToldAboutTags() throws {
+        let url = repo.appendingPathComponent("KeepCore/Sources/KeepCore/Resources/Localizable.xcstrings")
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let strings = try XCTUnwrap(root["strings"] as? [String: Any])
+        XCTAssertFalse(strings.isEmpty)
+        let mention = try NSRegularExpression(pattern: "标签|\\btags?\\b", options: .caseInsensitive)
+        for key in strings.keys {
+            for lang in ["en", "zh-Hans"] {
+                let value = try text(key, lang)
+                XCTAssertNil(mention.firstMatch(in: value, range: NSRange(value.startIndex..., in: value)), "\(key) (\(lang)): \(value)")
+            }
+        }
+        // The views and the share sheet do not touch an item's tags.
+        var swiftFiles: [URL] = []
+        for folder in ["App", "ShareExtension"] {
+            let enumerator = FileManager.default.enumerator(at: repo.appendingPathComponent(folder), includingPropertiesForKeys: nil)
+            while let f = enumerator?.nextObject() as? URL {
+                if f.pathExtension == "swift" { swiftFiles.append(f) }
+            }
+        }
+        XCTAssertFalse(swiftFiles.isEmpty)
+        for f in swiftFiles {
+            let code = try String(contentsOf: f, encoding: .utf8)
+            XCTAssertFalse(code.contains(".tags") || code.contains("visibleTags"), "\(f.lastPathComponent) reads or shows tags")
         }
     }
 

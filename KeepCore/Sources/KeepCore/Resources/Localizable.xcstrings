@@ -2653,19 +2653,121 @@
         }
       }
     },
+    "share.gif_one_frame": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only one frame of the animation was kept."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "动图只保留了一帧。"
+          }
+        }
+      }
+    },
+    "share.image_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This image couldn't be saved (too large or unreadable)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这张图片没能存入（太大或读不出来）。"
+          }
+        }
+      }
+    },
+    "share.image_note": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Images are compressed before saving; the original stays on your phone."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "图片会压缩后存入，原图留在你的手机上。"
+          }
+        }
+      }
+    },
+    "share.image_only_link": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The image couldn't be saved; only the link was."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "图片没能存入，只存入了链接。"
+          }
+        }
+      }
+    },
+    "share.image_only_text": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The image couldn't be saved; only the text was."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "图片没能存入，只存入了文字。"
+          }
+        }
+      }
+    },
+    "share.image_too_large": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This image is too large even after compression (over %lld MB), so it wasn't saved."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "图片太大，压缩后仍超过 %lld MB，没有存入。"
+          }
+        }
+      }
+    },
     "share.image_unreadable": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "the image could not be read"
+            "value": "This image couldn't be read, so it wasn't saved."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "图片读不出来"
+            "value": "这张图片读不出来，没有存入。"
           }
         }
       }

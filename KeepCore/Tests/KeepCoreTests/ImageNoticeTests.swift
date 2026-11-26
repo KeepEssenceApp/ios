@@ -42,8 +42,10 @@ final class ImageNoticeTests: XCTestCase {
         XCTAssertEqual(try text("share.image_too_large", "zh-Hans"), "图片太大，压缩后仍超过 %lld MiB，没有存入。")
         XCTAssertEqual(try text("share.image_too_large", "en"), "This image is too large even after compression (over %lld MiB), so it wasn't saved.")
         XCTAssertEqual(try text("share.image_unreadable", "zh-Hans"), "这张图片读不出来，没有存入。")
-        XCTAssertEqual(try text("share.image_failed", "zh-Hans"), "这张图片没能存入（太大或读不出来）。")
-        XCTAssertEqual(try text("share.image_failed", "en"), "This image couldn't be saved (too large or unreadable).")
+        XCTAssertEqual(try text("share.image_failed", "zh-Hans"), "这张图片没能存入。")
+        XCTAssertEqual(try text("share.image_failed", "en"), "This image couldn't be saved.")
+        // The encoder failing is neither "too large" nor "unreadable", and the sentence does not say it is.
+        for lang in ["zh-Hans", "en"] { let s = try text("share.image_failed", lang); XCTAssertFalse(s.contains("太大") || s.lowercased().contains("too large") || s.contains("读不出") || s.lowercased().contains("unreadable"), lang) }
         // One frame, and not which one: only that one picture was kept is known.
         XCTAssertEqual(try text("share.gif_one_frame", "zh-Hans"), "动图只保留了一帧。")
         XCTAssertFalse(try text("share.gif_one_frame", "zh-Hans").contains("第一"))

@@ -2744,13 +2744,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This image is too large even after compression (over %lld MB), so it wasn't saved."
+            "value": "This image is too large even after compression (over %lld MiB), so it wasn't saved."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "图片太大，压缩后仍超过 %lld MB，没有存入。"
+            "value": "图片太大，压缩后仍超过 %lld MiB，没有存入。"
           }
         }
       }

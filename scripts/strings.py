@@ -262,9 +262,12 @@ S = [
     # What the share sheet says about a picture (QA #87). A static line, not part of the sentence of a save;
     # and the sentences of the pictures that were not saved as shared. The number is the limit the code uses, in MiB
     # (3,145,728 bytes is 3 MiB; not written MB).
-    ("share.image_note", "图片会压缩后存入，原图留在你的手机上。", "Images are compressed before saving; the original stays on your phone."),
+    ("share.image_note", "图片会先在手机上处理再存入，原图不上传。", "Images are processed on your phone before saving; the original isn't uploaded."),
     ("share.image_only_link", "图片没能存入，只存入了链接。", "The image couldn't be saved; only the link was."),
     ("share.image_only_text", "图片没能存入，只存入了文字。", "The image couldn't be saved; only the text was."),
+    # The same two, for a save that is still waiting in the queue: what WILL be saved, never worded as done.
+    ("share.image_only_link_queued", "图片没能存入，只会存入链接。", "The image couldn't be saved; only the link will be."),
+    ("share.image_only_text_queued", "图片没能存入，只会存入文字。", "The image couldn't be saved; only the text will be."),
     ("share.image_too_large", "图片太大，压缩后仍超过 %lld MiB，没有存入。", "This image is too large even after compression (over %lld MiB), so it wasn't saved."),
     ("share.image_unreadable", "这张图片读不出来，没有存入。", "This image couldn't be read, so it wasn't saved."),
     ("share.image_failed", "这张图片没能存入。", "This image couldn't be saved."),

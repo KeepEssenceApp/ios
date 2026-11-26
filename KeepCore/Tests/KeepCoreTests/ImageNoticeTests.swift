@@ -35,10 +35,16 @@ final class ImageNoticeTests: XCTestCase {
     // MARK: the wording
 
     func testTheStaticLineAndTheSentencesAreTheDecidedWords() throws {
-        XCTAssertEqual(try text("share.image_note", "zh-Hans"), "图片会压缩后存入，原图留在你的手机上。")
-        XCTAssertEqual(try text("share.image_note", "en"), "Images are compressed before saving; the original stays on your phone.")
+        // The static line is the approved copy (marketing 14726f8), word for word.
+        XCTAssertEqual(try text("share.image_note", "zh-Hans"), "图片会先在手机上处理再存入，原图不上传。")
+        XCTAssertEqual(try text("share.image_note", "en"), "Images are processed on your phone before saving; the original isn't uploaded.")
         XCTAssertEqual(try text("share.image_only_link", "zh-Hans"), "图片没能存入，只存入了链接。")
         XCTAssertEqual(try text("share.image_only_text", "zh-Hans"), "图片没能存入，只存入了文字。")
+        // While it waits in the queue it is what WILL be saved, not what was.
+        XCTAssertEqual(try text("share.image_only_link_queued", "zh-Hans"), "图片没能存入，只会存入链接。")
+        XCTAssertEqual(try text("share.image_only_link_queued", "en"), "The image couldn't be saved; only the link will be.")
+        XCTAssertEqual(try text("share.image_only_text_queued", "zh-Hans"), "图片没能存入，只会存入文字。")
+        XCTAssertEqual(try text("share.image_only_text_queued", "en"), "The image couldn't be saved; only the text will be.")
         XCTAssertEqual(try text("share.image_too_large", "zh-Hans"), "图片太大，压缩后仍超过 %lld MiB，没有存入。")
         XCTAssertEqual(try text("share.image_too_large", "en"), "This image is too large even after compression (over %lld MiB), so it wasn't saved.")
         XCTAssertEqual(try text("share.image_unreadable", "zh-Hans"), "这张图片读不出来，没有存入。")
@@ -70,7 +76,7 @@ final class ImageNoticeTests: XCTestCase {
     }
 
     func testNothingPromisesWhatWasNotChecked() throws {
-        for key in ["share.image_note", "share.image_only_link", "share.image_only_text", "share.image_too_large", "share.image_unreadable", "share.image_failed", "share.gif_one_frame"] {
+        for key in ["share.image_note", "share.image_only_link", "share.image_only_text", "share.image_only_link_queued", "share.image_only_text_queued", "share.image_too_large", "share.image_unreadable", "share.image_failed", "share.gif_one_frame"] {
             for lang in ["zh-Hans", "en"] {
                 let s = try text(key, lang).lowercased()
                 for banned in ["原图保存", "高清", "无损", "lossless", "high quality", "hd"] { XCTAssertFalse(s.contains(banned), "\(key) \(lang): \(banned)") }
@@ -125,19 +131,23 @@ final class ImageNoticeTests: XCTestCase {
     }
 
     func testAPictureSavedAsALinkSaysWhatWasSaved() {
-        let note = ImageNote(instead: "The image couldn't be saved; only the link was.")
+        let note = ImageNote(instead: "The image couldn't be saved; only the link was.", queuedInstead: "The image couldn't be saved; only the link will be.")
         XCTAssertEqual(note.apply(to: saved).sentence, "The image couldn't be saved; only the link was.")
         XCTAssertEqual(note.apply(to: saved).kind, .saved)
     }
 
-    func testAQueuedSaveSaysItAfterTheQueuedSentence() {
-        let note = ImageNote(instead: "The image couldn't be saved; only the text was.")
-        XCTAssertEqual(note.apply(to: queued).sentence, "Queued. The image couldn't be saved; only the text was.")
-        XCTAssertEqual(note.apply(to: queued).kind, .queued)
+    func testAQueuedSaveSaysWhatWillBeSavedAfterTheQueuedSentenceAndNeverTheWordsOfASaveThatHappened() {
+        let note = ImageNote(instead: "The image couldn't be saved; only the text was.", queuedInstead: "The image couldn't be saved; only the text will be.")
+        let out = note.apply(to: queued)
+        XCTAssertEqual(out.sentence, "Queued. The image couldn't be saved; only the text will be.")
+        XCTAssertEqual(out.kind, .queued)
+        XCTAssertFalse(out.sentence.contains("only the text was"), "a save that is waiting is not said to have happened")
+        // Only the done wording, with nothing for the queue: the queued sentence stands alone.
+        XCTAssertEqual(ImageNote(instead: "The image couldn't be saved; only the text was.").apply(to: queued), queued)
     }
 
     func testADuplicateAndAFailureKeepTheCoresSentence() {
-        let note = ImageNote(instead: "The image couldn't be saved; only the link was.")
+        let note = ImageNote(instead: "The image couldn't be saved; only the link was.", queuedInstead: "The image couldn't be saved; only the link will be.")
         XCTAssertEqual(note.apply(to: duplicate), duplicate)
         XCTAssertEqual(note.apply(to: failed), failed)
         let loss = ImageNote(after: "Only one frame of the animation was kept.")
@@ -145,10 +155,11 @@ final class ImageNoticeTests: XCTestCase {
         XCTAssertEqual(loss.apply(to: failed), failed)
     }
 
-    func testALossIsSaidAfterTheCoresSentenceAndTheSaveStaysASave() {
+    func testALossIsSaidAfterTheCoresSentenceOfASaveThatHappenedAndNotWhileItWaits() {
         let note = ImageNote(after: "Only one frame of the animation was kept.")
         XCTAssertEqual(note.apply(to: saved).sentence, "Saved. Only one frame of the animation was kept.")
         XCTAssertEqual(note.apply(to: saved).kind, .saved)
-        XCTAssertEqual(note.apply(to: queued).sentence, "Queued. Only one frame of the animation was kept.")
+        // "was kept" is for a picture that was saved: while it waits, the core's queued sentence stands alone.
+        XCTAssertEqual(note.apply(to: queued), queued)
     }
 }

@@ -51,6 +51,10 @@ final class ShareModel: ObservableObject {
     @Published var phase: Phase = .working
     /// A second, smaller line under the sentence: what to do next.
     @Published var hint: String?
+    /// A picture was shared: the static line under the card says what happens to it (QA #87).
+    @Published var hasImage = false
+    /// What the picture's sentence adds to the core's, when what was saved is not the picture as shared.
+    private var imageNote = ImageNote()
     var close: () -> Void = {}
     private var draft: SaveDraft?
     private let store = KeepStore.shared
@@ -63,9 +67,23 @@ final class ShareModel: ObservableObject {
         let meta = store.meta
         var image: PreparedImage?
         if let data = shared.imageData {
-            image = ImagePrep.prepare(data, longEdge: meta.limit("image_long_edge_px") ?? 1600, maxBytes: meta.limit("asset_max_bytes") ?? 3_145_728)
-            if image == nil && shared.url == nil && shared.text == nil {
-                return finish(.failed, failedSentence(L("share.image_unreadable")), after: 3)
+            hasImage = true
+            // The same two values prepare the picture and are named in the sentence about it.
+            let maxBytes = meta.limit("asset_max_bytes") ?? 3_145_728
+            switch ImagePrep.prepareDetailed(data, longEdge: meta.limit("image_long_edge_px") ?? 1600, maxBytes: maxBytes) {
+            case .ready(let prepared):
+                image = prepared
+                if ImagePrep.isAnimation(data) { imageNote = ImageNote(after: L("share.gif_one_frame")) }
+            case .tooLarge:
+                if shared.url == nil && shared.text == nil { return finish(.failed, L("share.image_too_large", Int((Double(maxBytes) / 1_048_576).rounded())), after: 3.2) }
+                imageNote = ImageNote(instead: shared.url != nil ? L("share.image_only_link") : L("share.image_only_text"))
+            case .unreadable:
+                if shared.url == nil && shared.text == nil { return finish(.failed, L("share.image_unreadable"), after: 3.2) }
+                imageNote = ImageNote(instead: shared.url != nil ? L("share.image_only_link") : L("share.image_only_text"))
+            case .failed:
+                // The encoder failed: that is neither "too large" nor "unreadable", so it is not said to be.
+                if shared.url == nil && shared.text == nil { return finish(.failed, L("share.image_failed"), after: 3.2) }
+                imageNote = ImageNote(instead: shared.url != nil ? L("share.image_only_link") : L("share.image_only_text"))
             }
         }
         let request: SaveRequest
@@ -106,11 +124,11 @@ final class ShareModel: ObservableObject {
         guard store.credential != nil else {
             // Nothing can be sent before signing in, and only the app can do that: the save waits on
             // the device, and the sheet says so and what to do.
-            let held = service.hold(draft)
+            let held = imageNote.apply(to: service.hold(draft))
             hint = held.kind == .queued ? L("share.sign_in_first") : nil
             return finish(held.kind, held.sentence, after: 4)
         }
-        let outcome = await service.save(draft)
+        let outcome = imageNote.apply(to: await service.save(draft))
         finish(outcome.kind, outcome.sentence, after: outcome.kind == .failed || outcome.kind == .queued ? 3.2 : 2.2)
     }
 
@@ -185,6 +203,11 @@ struct ShareSheetView: View {
     @ObservedObject var model: ShareModel
     @Environment(\.colorScheme) private var scheme
 
+    private var isAsking: Bool {
+        if case .asking = model.phase { return true }
+        return false
+    }
+
     var body: some View {
         VStack {
             VStack(alignment: .leading, spacing: 14) {
@@ -194,6 +217,13 @@ struct ShareSheetView: View {
                         .accessibilityHidden(true)
                     content
                     Spacer(minLength: 0)
+                }
+                // What happens to a picture, said once under the sentence: not part of it, and not a question (QA #87).
+                if model.hasImage, !isAsking {
+                    Text(L("share.image_note"))
+                        .font(Theme.secondary).foregroundStyle(Theme.text3)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("share.image_note")
                 }
                 if case .asking = model.phase {
                     HStack(spacing: 8) {

@@ -60,6 +60,12 @@ final class ShareModel: ObservableObject {
     private let store = KeepStore.shared
     private var closed = false
 
+    /// The picture was not saved, and the link or the text that came with it was: said as done, and as will-be while it waits.
+    private func instead(for shared: Shared) -> ImageNote {
+        if shared.url != nil { return ImageNote(instead: L("share.image_only_link"), queuedInstead: L("share.image_only_link_queued")) }
+        return ImageNote(instead: L("share.image_only_text"), queuedInstead: L("share.image_only_text_queued"))
+    }
+
     func run(_ items: [NSExtensionItem]) async {
         guard let shared = await Shared.read(items) else {
             return finish(.failed, failedSentence(L("share.nothing")), after: 3)
@@ -76,14 +82,14 @@ final class ShareModel: ObservableObject {
                 if ImagePrep.isAnimation(data) { imageNote = ImageNote(after: L("share.gif_one_frame")) }
             case .tooLarge:
                 if shared.url == nil && shared.text == nil { return finish(.failed, L("share.image_too_large", ImageNote.mebibytes(maxBytes)), after: 3.2) }
-                imageNote = ImageNote(instead: shared.url != nil ? L("share.image_only_link") : L("share.image_only_text"))
+                imageNote = instead(for: shared)
             case .unreadable:
                 if shared.url == nil && shared.text == nil { return finish(.failed, L("share.image_unreadable"), after: 3.2) }
-                imageNote = ImageNote(instead: shared.url != nil ? L("share.image_only_link") : L("share.image_only_text"))
+                imageNote = instead(for: shared)
             case .failed:
                 // The encoder failed: that is neither "too large" nor "unreadable", so it is not said to be.
                 if shared.url == nil && shared.text == nil { return finish(.failed, L("share.image_failed"), after: 3.2) }
-                imageNote = ImageNote(instead: shared.url != nil ? L("share.image_only_link") : L("share.image_only_text"))
+                imageNote = instead(for: shared)
             }
         }
         let request: SaveRequest

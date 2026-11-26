@@ -2676,13 +2676,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This image couldn't be saved (too large or unreadable)."
+            "value": "This image couldn't be saved."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这张图片没能存入（太大或读不出来）。"
+            "value": "这张图片没能存入。"
           }
         }
       }

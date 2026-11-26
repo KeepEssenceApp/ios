@@ -267,7 +267,7 @@ S = [
     ("share.image_only_text", "图片没能存入，只存入了文字。", "The image couldn't be saved; only the text was."),
     ("share.image_too_large", "图片太大，压缩后仍超过 %lld MiB，没有存入。", "This image is too large even after compression (over %lld MiB), so it wasn't saved."),
     ("share.image_unreadable", "这张图片读不出来，没有存入。", "This image couldn't be read, so it wasn't saved."),
-    ("share.image_failed", "这张图片没能存入（太大或读不出来）。", "This image couldn't be saved (too large or unreadable)."),
+    ("share.image_failed", "这张图片没能存入。", "This image couldn't be saved."),
     ("share.gif_one_frame", "动图只保留了一帧。", "Only one frame of the animation was kept."),
 ]
 

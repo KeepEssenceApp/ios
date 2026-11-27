@@ -222,7 +222,10 @@ final class OfflineQueueTests: XCTestCase {
                 : .json(201, #"{"status":"saved","item_id":"i9","message_key":"saved_image_skipped_quota","message":"Saved. The image was not stored: storage quota exceeded.","image_stored":false}"#)
         }
         let o = await service().save(SaveDraft(request: SaveRequest(kind: "image", url: "https://x.example/p"), image: image))
-        XCTAssertEqual(o, SaveOutcome(kind: .saved, sentence: "Saved. The image was not stored: storage quota exceeded."))
+        // Still `.saved` (the item is in), but the outcome carries that the picture is not: a sentence about the picture
+        // (the one-frame line of an animation) is only said for `imageStored == true`.
+        XCTAssertEqual(o, SaveOutcome(kind: .saved, sentence: "Saved. The image was not stored: storage quota exceeded.", imageStored: false))
+        XCTAssertEqual(ImageNote(after: "Only one frame of the animation was kept.").apply(to: o), o, "an over-quota animation is not said to have kept a frame")
         XCTAssertEqual(StubProtocol.requests.map(\.path), ["/v1/assets", "/v1/items"], "nothing is uploaded")
         XCTAssertEqual(StubProtocol.requests.last?.json["asset_id"] as? String, "as8")
         XCTAssertEqual(StubProtocol.requests.last?.json["kind"] as? String, "image")

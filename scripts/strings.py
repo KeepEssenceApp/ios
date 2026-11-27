@@ -265,9 +265,11 @@ S = [
     ("share.image_note", "图片会先在手机上处理再存入，原图不上传。", "Images are processed on your phone before saving; the original isn't uploaded."),
     ("share.image_only_link", "图片没能存入，只存入了链接。", "The image couldn't be saved; only the link was."),
     ("share.image_only_text", "图片没能存入，只存入了文字。", "The image couldn't be saved; only the text was."),
-    # The same two, for a save that is still waiting in the queue: what WILL be saved, never worded as done.
-    ("share.image_only_link_queued", "图片没能存入，只会存入链接。", "The image couldn't be saved; only the link will be."),
-    ("share.image_only_text_queued", "图片没能存入，只会存入文字。", "The image couldn't be saved; only the text will be."),
+    # The same two, for a save that is still waiting in the queue. Said only as far as the phone knows: the picture
+    # will not be saved, and what is in the queue is the link or the text. Whether the core saves it later is the
+    # core's answer to give then, so it is not promised here (Project 7213889512, Marketing 7213864126).
+    ("share.image_only_link_queued", "图片不会存入，排队的只有链接。", "The image won't be saved; only the link is queued."),
+    ("share.image_only_text_queued", "图片不会存入，排队的只有文字。", "The image won't be saved; only the text is queued."),
     ("share.image_too_large", "图片太大，压缩后仍超过 %lld MiB，没有存入。", "This image is too large even after compression (over %lld MiB), so it wasn't saved."),
     ("share.image_unreadable", "这张图片读不出来，没有存入。", "This image couldn't be read, so it wasn't saved."),
     ("share.image_failed", "这张图片没能存入。", "This image couldn't be saved."),

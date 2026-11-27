@@ -18,6 +18,16 @@ public struct SaveOutcome: Equatable, Sendable {
     public enum Kind: String, Sendable { case saved, duplicate, queued, failed }
     public let kind: Kind
     public let sentence: String
+    /// What the core said about the picture of a save it answered `saved` or `duplicate` to (`image_stored`):
+    /// true only when the bytes are really stored, false when they were not (over quota), nil when it did not
+    /// say or there was no picture. Never guessed: a save that was not answered by the core has none.
+    public let imageStored: Bool?
+
+    public init(kind: Kind, sentence: String, imageStored: Bool? = nil) {
+        self.kind = kind
+        self.sentence = sentence
+        self.imageStored = imageStored
+    }
 }
 
 /// Saving, shared by the share extension (one save, now) and the app (sending the offline queue).
@@ -60,7 +70,9 @@ public struct SaveService: Sendable {
             request.assetId = try await store(blob, contentType: contentType, sha256: sha256)
         }
         let result = try await client.saveItem(request, idempotencyKey: id, timeout: timeout)
-        return SaveOutcome(kind: result.status == "duplicate" ? .duplicate : .saved, sentence: result.message)
+        // `saved` with `saved_image_skipped_quota` is still `.saved` (the item is in), but the picture is not:
+        // that is carried as `imageStored`, so a sentence about the picture is only said when it is true.
+        return SaveOutcome(kind: result.status == "duplicate" ? .duplicate : .saved, sentence: result.message, imageStored: result.imageStored)
     }
 
     /// Writes the save to the queue without trying to send it: for a device that is not signed in yet.

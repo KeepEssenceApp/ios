@@ -9,6 +9,11 @@ import Foundation
 /// queued sentence, and nothing about a loss: the words of a save that happened are for one that happened, so a
 /// queued save never says it was saved or kept. A save that was already there, or that did not happen, keeps the
 /// plain sentence, which is then the true one.
+///
+/// `after` (the one-frame sentence, QA #87, Project 7213889512) needs all three: the core answered `saved`, the
+/// picture really is stored (`image_stored == true`), and the source had more than one frame (that is when the
+/// note carries `after` at all). A `saved` whose picture was not stored (over quota: `image_stored == false`) or
+/// whose answer did not say (`nil`) keeps the core's sentence, which already says the picture was not stored.
 public struct ImageNote: Equatable, Sendable {
     public var instead: String?
     public var queuedInstead: String?
@@ -23,8 +28,10 @@ public struct ImageNote: Equatable, Sendable {
     public func apply(to outcome: SaveOutcome) -> SaveOutcome {
         switch outcome.kind {
         case .saved:
-            if let instead { return SaveOutcome(kind: .saved, sentence: instead) }
-            if let after { return SaveOutcome(kind: .saved, sentence: "\(outcome.sentence) \(after)") }
+            if let instead { return SaveOutcome(kind: .saved, sentence: instead, imageStored: outcome.imageStored) }
+            if let after, outcome.imageStored == true {
+                return SaveOutcome(kind: .saved, sentence: "\(outcome.sentence) \(after)", imageStored: true)
+            }
         case .queued:
             if let queuedInstead { return SaveOutcome(kind: .queued, sentence: "\(outcome.sentence) \(queuedInstead)") }
         case .duplicate, .failed:

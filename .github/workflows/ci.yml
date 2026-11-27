@@ -35,24 +35,30 @@ jobs:
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
 
       - name: Build
+        shell: bash
         run: |
           xcodebuild build -project KeepEssence.xcodeproj -scheme KeepEssence \
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
             -derivedDataPath build/dd CODE_SIGN_IDENTITY=- | tail -20
 
       - name: Tests on the simulator, against the fake core
+        shell: bash
         run: |
+          mkdir -p build
           node fake/server.mjs &
           sleep 1
           curl -sf -X POST http://127.0.0.1:8795/__reset
           xcodebuild test -project KeepEssence.xcodeproj -scheme KeepEssence \
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
             -derivedDataPath build/dd CODE_SIGN_IDENTITY=- \
-            -resultBundlePath build/result.xcresult | grep -E "Test Case|error:|Executed|\*\* TEST"
+            -resultBundlePath build/result.xcresult 2>&1 | tee build/test.log | \
+            awk '/Test Case|error:|Executed|\*\* TEST/ { print; fflush() }'
 
       - name: Keep the result
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: xcresult
-          path: build/result.xcresult
+          path: |
+            build/result.xcresult
+            build/test.log

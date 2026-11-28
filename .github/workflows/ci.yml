@@ -43,7 +43,7 @@ jobs:
           cd KeepCore
           swift test 2>&1 | tee "$RUNNER_TEMP/unit.log"
           # The comparison with the spec must have run, not been skipped.
-          for t in testThemeMirrorsTheTokens testTheShapesFollowTheRadiiOfTheSpec; do
+          for t in testThemeMirrorsTheTokens testTheShapesFollowTheRadiiOfTheSpec testEachDarkBlockOfTheSpecIsComparedOnItsOwn; do
             grep -E "Test Case '-\[KeepCoreTests\.[A-Za-z]+ $t\]' passed" "$RUNNER_TEMP/unit.log" \
               || { echo "::error::$t did not run and pass"; exit 1; }
           done
@@ -60,7 +60,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/spec"
           cd "$NOSPEC/KeepCore"
           set +e
-          swift test --filter 'testThemeMirrorsTheTokens|testTheShapesFollowTheRadiiOfTheSpec' 2>&1 | tee "$RUNNER_TEMP/nospec.log"
+          swift test --filter 'testThemeMirrorsTheTokens|testTheShapesFollowTheRadiiOfTheSpec|testEachDarkBlockOfTheSpecIsComparedOnItsOwn' 2>&1 | tee "$RUNNER_TEMP/nospec.log"
           status=${PIPESTATUS[0]}
           set -e
           echo "swift test exit status without the spec: $status"

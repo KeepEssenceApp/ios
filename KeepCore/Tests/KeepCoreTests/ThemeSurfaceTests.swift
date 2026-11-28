@@ -21,13 +21,126 @@ final class SpecComparisonTests: XCTestCase {
         XCTAssertEqual(drift("--ke-radius-control: 999px;", "--ke-radius-control: 12px;").count, 1)
         XCTAssertEqual(drift("--ke-card: #FFFDFC;", "--ke-card: #FFFFFF;").count, 1)
         XCTAssertEqual(drift("--ke-gold-ink: #795600;", "--ke-gold-ink: #795601;").count, 1, "a light value")
-        XCTAssertEqual(drift("--ke-gold-ink: #F2D27D;", "--ke-gold-ink: #F2D27E;").count, 1, "a dark value")
-        XCTAssertEqual(drift("--ke-bg: #191817;", "--ke-bg: #0B0B0B;").count, 1, "a dark value")
+        // A dark value is in two blocks (the system's and the manual one). Changed in one of them it is one
+        // difference, changed in both it is two: neither hides the other.
+        for block in [SpecTokens.Block.systemDark, .manualDark] {
+            for (from, to) in [("--ke-gold-ink: #F2D27D;", "--ke-gold-ink: #F2D27E;"), ("--ke-bg: #191817;", "--ke-bg: #0B0B0B;")] {
+                XCTAssertEqual(SpecTokens.differences(changed(css, in: block, from: from, to: to)).count, 1, "a dark value of the \(block.name)")
+            }
+        }
+        XCTAssertEqual(drift("--ke-gold-ink: #F2D27D;", "--ke-gold-ink: #F2D27E;").count, 2, "a dark value in both dark blocks")
+        XCTAssertEqual(drift("--ke-bg: #191817;", "--ke-bg: #0B0B0B;").count, 2, "a dark value in both dark blocks")
         // A token only the css has, and one only the theme has.
         XCTAssertEqual(drift("  --ke-gold-ink: #795600;\n", "").count, 1)
         XCTAssertEqual(drift("  --ke-gold-ink: #795600;\n", "  --ke-gold-ink: #795600;\n  --ke-gold-ink-2: #795600;\n").count, 1)
         XCTAssertEqual(drift("  --ke-radius-card: 20px;\n", "").count, 1)
         XCTAssertEqual(drift("  --ke-radius-card: 20px;\n", "  --ke-radius-card: 20px;\n  --ke-radius-pill: 40px;\n").count, 1)
+    }
+
+    // MARK: the two dark blocks
+
+    /// `css` with `from` replaced by `to` inside one block only. The block runs from its marker (the media
+    /// condition of the system's dark block, the selector of the manual one) to the next marker or the end;
+    /// the light block is what comes before both. `from` must be in the block exactly once, or the copy would
+    /// not differ from the original and the test would prove nothing.
+    private func region(of block: SpecTokens.Block, in css: String) -> Range<String.Index> {
+        var starts: [(SpecTokens.Block, String.Index)] = [(.light, css.startIndex)]
+        for (b, marker) in [(SpecTokens.Block.systemDark, SpecTokens.Block.systemMedia), (.manualDark, SpecTokens.Block.manualSelector)] {
+            XCTAssertEqual(css.components(separatedBy: marker).count - 1, 1, "the fixture must have one \(b.name)")
+            if let r = css.range(of: marker) { starts.append((b, r.lowerBound)) }
+        }
+        starts.sort { $0.1 < $1.1 }
+        let i = starts.firstIndex { $0.0 == block } ?? 0
+        return starts[i].1..<(i + 1 < starts.count ? starts[i + 1].1 : css.endIndex)
+    }
+
+    private func changed(_ css: String, in block: SpecTokens.Block, from: String, to: String) -> String {
+        let range = region(of: block, in: css)
+        let part = String(css[range])
+        XCTAssertEqual(part.components(separatedBy: from).count - 1, 1, "\(from) must be in the \(block.name) once")
+        return css.replacingCharacters(in: range, with: part.replacingOccurrences(of: from, with: to))
+    }
+
+    /// What happens when the two dark blocks of `css`, a tokens.css that matches the theme, are told apart:
+    /// each is compared with the theme on its own, and a copy changed in one block reports that block only.
+    private func checkEachDarkBlockOnItsOwn(_ css: String, _ label: String) {
+        let system = SpecTokens.Block.systemDark, manual = SpecTokens.Block.manualDark
+        let was = "--ke-card: #292725;", white = "--ke-card: #FFFFFF;"
+        XCTAssertEqual(SpecTokens.differences(css), [], "\(label): the unchanged copy has no difference")
+
+        // Two tables, not one: the value of one block does not overwrite the other's.
+        let systemOnly = changed(css, in: system, from: was, to: white)
+        let manualOnly = changed(css, in: manual, from: was, to: white)
+        let a = SpecTokens.parse(systemOnly).parsed, b = SpecTokens.parse(manualOnly).parsed
+        XCTAssertEqual(a.systemDark["card"], 0xFFFFFF, label); XCTAssertEqual(a.manualDark["card"], 0x292725, label)
+        XCTAssertEqual(b.systemDark["card"], 0x292725, label); XCTAssertEqual(b.manualDark["card"], 0xFFFFFF, label)
+
+        // Only the system's block changed, only the manual one changed, both changed.
+        let onlySystem = SpecTokens.differences(systemOnly)
+        XCTAssertEqual(onlySystem.count, 1, "\(label): only the system dark block changed: \(onlySystem)")
+        XCTAssertTrue(onlySystem.first?.contains(system.name) == true && onlySystem.first?.contains(manual.name) == false, "\(label): \(onlySystem)")
+        let onlyManual = SpecTokens.differences(manualOnly)
+        XCTAssertEqual(onlyManual.count, 1, "\(label): only the manual dark block changed: \(onlyManual)")
+        XCTAssertTrue(onlyManual.first?.contains(manual.name) == true && onlyManual.first?.contains(system.name) == false, "\(label): \(onlyManual)")
+        let both = SpecTokens.differences(changed(systemOnly, in: manual, from: was, to: white))
+        XCTAssertEqual(both.count, 2, "\(label): both dark blocks changed: \(both)")
+        XCTAssertTrue(both.contains { $0.contains(system.name) } && both.contains { $0.contains(manual.name) }, "\(label): \(both)")
+
+        // A token one dark block does not declare (it would be the light value there) is that block's difference.
+        for (block, other) in [(system, manual), (manual, system)] {
+            let d = SpecTokens.differences(changed(css, in: block, from: was, to: ""))
+            XCTAssertEqual(d.count, 1, "\(label): --ke-card left out of the \(block.name): \(d)")
+            XCTAssertTrue(d.first?.contains(block.name) == true && d.first?.contains(other.name) == false && d.first?.contains("not declared") == true, "\(label): \(d)")
+            // A token only one dark block has, and the theme does not: that block's difference.
+            let extra = SpecTokens.differences(changed(css, in: block, from: was, to: "\(was) --ke-extra-one: #123456;"))
+            XCTAssertEqual(extra.count, 1, "\(label): an extra token in the \(block.name): \(extra)")
+            XCTAssertTrue(extra.first?.contains("--ke-extra-one") == true && extra.first?.contains(block.name) == true && extra.first?.contains(other.name) == false, "\(label): \(extra)")
+            // The same token twice in one block: the later one would hide the earlier one.
+            let twice = SpecTokens.differences(changed(css, in: block, from: was, to: "\(was) \(white)"))
+            XCTAssertTrue(twice.contains { $0.contains("--ke-card is declared twice in the \(block.name)") }, "\(label): \(twice)")
+        }
+
+        // A dark block that is not there, and one that is there twice: neither is taken for no difference.
+        for (block, other) in [(system, manual), (manual, system)] {
+            let range = region(of: block, in: css)
+            let missing = SpecTokens.differences(css.replacingCharacters(in: range, with: ""))
+            XCTAssertTrue(missing.contains { $0.contains("tokens.css has no \(block.name)") }, "\(label): \(missing)")
+            XCTAssertFalse(missing.contains { $0.contains(other.name) }, "\(label): the other block is not blamed: \(missing)")
+            let doubled = SpecTokens.differences(css + "\n" + String(css[range]))
+            XCTAssertEqual(doubled.count, 1, "\(label): \(block.name) twice: \(doubled)")
+            XCTAssertTrue(doubled.first?.contains("2 copies of the \(block.name)") == true, "\(label): \(doubled)")
+        }
+
+        // Colours in a block the theme does not mirror are a problem. A block with no colours (sizes) is not.
+        let sepia = SpecTokens.differences(css + "\n:root[data-theme=\"sepia\"] { --ke-bg: #000000; }\n")
+        XCTAssertEqual(sepia.count, 1, "\(label): \(sepia)")
+        XCTAssertTrue(sepia.first?.contains("[data-theme=\"sepia\"]") == true, "\(label): \(sepia)")
+        XCTAssertEqual(SpecTokens.differences(css + "\n@media (max-width: 400px) { :root { --ke-size-body: 18px; } }\n"), [], label)
+    }
+
+    /// The same check on the theme written out as css: it needs no spec, so it always runs.
+    func testEachDarkBlockOfTheThemeCssIsComparedOnItsOwn() {
+        let css = SpecTokens.renderTheme()
+        XCTAssertEqual(css.components(separatedBy: SpecTokens.Block.systemMedia).count - 1, 1, "renderTheme writes the system dark block")
+        XCTAssertEqual(css.components(separatedBy: SpecTokens.Block.manualSelector).count - 1, 1, "renderTheme writes the manual dark block")
+        let parsed = SpecTokens.parse(css)
+        XCTAssertEqual(parsed.problems, [])
+        XCTAssertFalse(parsed.parsed.systemDark.isEmpty)
+        XCTAssertEqual(parsed.parsed.systemDark, parsed.parsed.manualDark, "both dark blocks hold the theme's dark values")
+        let darkOnes = Theme.tokens.filter { $0.value.dark != $0.value.light }
+        XCTAssertEqual(Set(parsed.parsed.systemDark.keys), Set(darkOnes.keys))
+        XCTAssertEqual(Set(parsed.parsed.manualDark.keys), Set(darkOnes.keys))
+        checkEachDarkBlockOnItsOwn(css, "the theme written out as css")
+    }
+
+    /// The same check on a copy of the pinned spec's tokens.css. The copy is a string in memory: the spec is
+    /// never written to. Without the spec it is skipped, and under KE_REQUIRE_SPEC=1 it fails.
+    func testEachDarkBlockOfTheSpecIsComparedOnItsOwn() throws {
+        switch SpecTokens.lookup(nextTo: RepoPaths.root, environment: ProcessInfo.processInfo.environment) {
+        case .skip(let why): throw XCTSkip(why)
+        case .fail(let why): XCTFail(why)
+        case .css(let css): checkEachDarkBlockOnItsOwn(css, "a copy of the spec's tokens.css")
+        }
     }
 
     /// Where the spec is not next to the repository: a skip, unless KE_REQUIRE_SPEC=1 asks for it, which is a failure.

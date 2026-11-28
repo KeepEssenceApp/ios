@@ -1,0 +1,4 @@
+# The commit of the public KeepEssenceApp/spec repository that KeepCore/Sources/KeepCore/Theme.swift
+# mirrors (design/tokens.css). CI checks exactly this commit out next to this repository, where the
+# tests read it. Move it only together with Theme.swift.
+e9a70a9b52a52cfc859bc976b90a1eaa5b04a25d

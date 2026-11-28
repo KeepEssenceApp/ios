@@ -70,6 +70,16 @@ TEST_RUNNER_KE_LANG=en TEST_RUNNER_KE_SCREENSHOT_DIR=$PWD/build/screens xcodebui
 
 深色的截图先跑 `xcrun simctl ui booted appearance dark`。`docs/screens/` 里有一份浅色中文和一份深色英文的截图。
 
+单元测试里有一组测试把 `Theme.swift` 和 spec 的 `design/tokens.css` 逐项比较（颜色的浅色和深色、圆角）。spec 是另一个公开仓库，要放在本仓库旁边（`../spec`），版本写在 `SPEC_REF`：
+
+```
+git clone https://github.com/KeepEssenceApp/spec.git ../spec
+git -C ../spec checkout "$(grep -v '^#' SPEC_REF)"
+cd KeepCore && KE_REQUIRE_SPEC=1 swift test
+```
+
+旁边没有 spec 时，这组比较会被跳过（`swift test` 仍然退出 0）。设了 `KE_REQUIRE_SPEC=1` 就改为失败；CI 总是设它，并把 spec 检出到 `SPEC_REF` 那一版。spec 的色表或圆角变了：先改 `Theme.swift`，再把 `SPEC_REF` 改成同一版。
+
 提交前另有两个检查：
 
 ```

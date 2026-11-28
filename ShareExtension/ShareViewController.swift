@@ -35,7 +35,7 @@ final class ShareViewController: UIViewController {
         if let sheet = sheetPresentationController ?? parent?.sheetPresentationController {
             sheet.detents = [.custom { _ in 160 }]
             sheet.prefersGrabberVisible = false
-            sheet.preferredCornerRadius = 10
+            sheet.preferredCornerRadius = Theme.Radius.sheet
         }
     }
 }
@@ -245,8 +245,8 @@ struct ShareSheetView: View {
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sheet))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.sheet).stroke(Theme.line, lineWidth: 1))
+            .clipShape(Theme.shape(.shareCard))
+            .overlay(Theme.shape(.shareCard).stroke(Theme.line, lineWidth: 1))
             .padding(.horizontal, 12)
             .padding(.top, 20)
             Spacer()
@@ -287,8 +287,8 @@ private struct ShareButton: ButtonStyle {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(solid ? Theme.solid : Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.base))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.base).stroke(solid ? Theme.solid : Theme.line, lineWidth: 1))
+            .clipShape(Theme.shape(.shareButton))
+            .overlay(Theme.shape(.shareButton).stroke(solid ? Theme.solid : Theme.line, lineWidth: 1))
             .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }

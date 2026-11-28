@@ -318,7 +318,7 @@ struct ItemDetailView: View {
             }
             if let imageURL {
                 AsyncImage(url: imageURL) { image in
-                    image.resizable().scaledToFit().clipShape(RoundedRectangle(cornerRadius: Theme.Radius.tag))
+                    image.resizable().scaledToFit().clipShape(Theme.shape(.originalImage))
                 } placeholder: {
                     Rectangle().fill(Theme.quiet).frame(height: 120)
                 }

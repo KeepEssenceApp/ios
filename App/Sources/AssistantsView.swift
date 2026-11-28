@@ -336,8 +336,8 @@ struct ProductButton: ButtonStyle {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(on ? Theme.solid : Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.base))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.base).stroke(on ? Theme.solid : Theme.line, lineWidth: 1))
+            .clipShape(Theme.shape(.choiceChip))
+            .overlay(Theme.shape(.choiceChip).stroke(on ? Theme.solid : Theme.line, lineWidth: 1))
     }
 }
 
@@ -358,8 +358,8 @@ struct RulesPage: View {
                 .frame(minHeight: 200)
                 .padding(8)
                 .background(Theme.card)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.base))
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.base).stroke(Theme.line, lineWidth: 1))
+                .clipShape(Theme.shape(.textEditor))
+                .overlay(Theme.shape(.textEditor).stroke(Theme.line, lineWidth: 1))
                 .accessibilityIdentifier("rules.text")
             SectionLabel(L("rules.expiry"))
             Text(L("rules.expiry.intro")).font(Theme.secondary).foregroundStyle(Theme.text2)

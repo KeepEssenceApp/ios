@@ -9,8 +9,25 @@ jobs:
   test:
     runs-on: macos-latest
     timeout-minutes: 45
+    env:
+      # The tests compare the Swift theme with the spec's design/tokens.css. With this set, a spec that is
+      # not next to this repository is a failure, not a skipped test.
+      KE_REQUIRE_SPEC: "1"
     steps:
       - uses: actions/checkout@v4
+
+      # The spec is public (no secret needed). It goes next to this repository, which is where the tests
+      # look, at the commit named in SPEC_REF. actions/checkout cannot put it outside the workspace.
+      - name: Check out the spec at the pinned commit, next to this repository
+        run: |
+          SPEC_REF=$(grep -v '^#' SPEC_REF | tr -d '[:space:]')
+          test -n "$SPEC_REF"
+          git init --quiet ../spec
+          git -C ../spec fetch --quiet --depth 1 https://github.com/KeepEssenceApp/spec.git "$SPEC_REF"
+          git -C ../spec checkout --quiet FETCH_HEAD
+          echo "spec is at $(git -C ../spec rev-parse HEAD) (SPEC_REF: $SPEC_REF)"
+          test "$(git -C ../spec rev-parse HEAD)" = "$SPEC_REF"
+          test -f ../spec/design/tokens.css
 
       - name: Use the newest Xcode on the runner
         run: sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
@@ -21,7 +38,37 @@ jobs:
           ruby scripts/gen-shared-rules.rb --check
 
       - name: Unit tests
-        run: cd KeepCore && swift test
+        run: |
+          set -o pipefail
+          cd KeepCore
+          swift test 2>&1 | tee "$RUNNER_TEMP/unit.log"
+          # The comparison with the spec must have run, not been skipped.
+          for t in testThemeMirrorsTheTokens testTheShapesFollowTheRadiiOfTheSpec; do
+            grep -E "Test Case '-\[KeepCoreTests\.[A-Za-z]+ $t\]' passed" "$RUNNER_TEMP/unit.log" \
+              || { echo "::error::$t did not run and pass"; exit 1; }
+          done
+          ! grep -E "Test Case '.*' skipped" "$RUNNER_TEMP/unit.log" \
+            || { echo "::error::a unit test was skipped"; exit 1; }
+
+      # Required mode with no spec must fail, and fail for that reason. KeepCore alone is copied to a
+      # folder with no spec beside it (the tests find the spec relative to their own source path).
+      - name: The comparison fails, and does not skip, when the spec is missing
+        run: |
+          NOSPEC="$RUNNER_TEMP/nospec"
+          rm -rf "$NOSPEC" && mkdir -p "$NOSPEC/KeepCore"
+          rsync -a --exclude .build KeepCore/ "$NOSPEC/KeepCore/"
+          test ! -e "$RUNNER_TEMP/spec"
+          cd "$NOSPEC/KeepCore"
+          set +e
+          swift test --filter 'testThemeMirrorsTheTokens|testTheShapesFollowTheRadiiOfTheSpec' 2>&1 | tee "$RUNNER_TEMP/nospec.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          echo "swift test exit status without the spec: $status"
+          test "$status" -ne 0 || { echo "::error::required mode with no spec passed"; exit 1; }
+          grep -F "KE_REQUIRE_SPEC=1, so a missing spec is a failure and not a skip" "$RUNNER_TEMP/nospec.log" \
+            || { echo "::error::it failed, but not because the spec is missing"; exit 1; }
+          ! grep -E "Test Case '.*' skipped" "$RUNNER_TEMP/nospec.log" \
+            || { echo "::error::the comparison was skipped in required mode"; exit 1; }
 
       - name: Generate the project
         run: |

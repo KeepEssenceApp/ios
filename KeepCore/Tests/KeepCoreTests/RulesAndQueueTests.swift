@@ -231,6 +231,43 @@ final class OfflineQueueTests: XCTestCase {
         XCTAssertEqual(StubProtocol.requests.last?.json["kind"] as? String, "image")
     }
 
+    /// Over quota the core names what it did not store (#87): `saved_image_skipped_quota` for a picture, and
+    /// `saved_file_skipped_quota` for any other file. This app saves pictures, never files, so for it the second key is one it
+    /// may not know. What it shows is the core's own sentence, in either language, and the one-frame line is not added to it
+    /// (the answer says `image_stored: false`).
+    func testAKeyThisBuildDoesNotKnowShowsTheCoresOwnSentenceInBothLanguages() async throws {
+        let image = try XCTUnwrap(ImagePrep.prepare(TestImage.png(width: 64, height: 64)))
+        let cases = [
+            ("zh", "已存入。文件没存入：超出存储配额。"),
+            ("en", "Saved. The file was not stored: storage quota exceeded."),
+        ]
+        for (lang, sentence) in cases {
+            StubProtocol.reset { r in
+                r.path == "/v1/assets" ? .json(200, #"{"asset_id":"as9","status":"over_quota"}"#)
+                    : .json(201, #"{"status":"saved","item_id":"i9","message_key":"saved_file_skipped_quota","message":"\#(sentence)","image_stored":false}"#)
+            }
+            let o = await service(lang: lang).save(SaveDraft(request: SaveRequest(kind: "image", entry: "share"), image: image))
+            XCTAssertEqual(o, SaveOutcome(kind: .saved, sentence: sentence, imageStored: false), lang)
+            XCTAssertEqual(ImageNote(after: "Only one frame of the animation was kept.").apply(to: o), o, "\(lang): no frame line on a quota answer")
+            XCTAssertEqual(StubProtocol.requests.map(\.path), ["/v1/assets", "/v1/items"], "\(lang): nothing is uploaded")
+        }
+    }
+
+    /// The copy of the shared rules that is bundled (used until the first answer of `GET /v1/meta` is cached) has both
+    /// quota sentences, the image one unchanged, in both languages.
+    func testTheBundledSharedRulesHaveBothQuotaSentences() throws {
+        let rules = Meta.bundled.sharedRules
+        let expected = [
+            "saved_image_skipped_quota": ["zh": "已存入。图片没存入：超出存储配额。", "en": "Saved. The image was not stored: storage quota exceeded."],
+            "saved_file_skipped_quota": ["zh": "已存入。文件没存入：超出存储配额。", "en": "Saved. The file was not stored: storage quota exceeded."],
+        ]
+        for (key, byLanguage) in expected {
+            for (lang, text) in byLanguage {
+                XCTAssertEqual(rules.saveMessage(key, lang: lang), text, "\(key) \(lang)")
+            }
+        }
+    }
+
     func testNotSignedInIsHeldAndSaidSo() async throws {
         StubProtocol.reset { _ in .empty(500) }
         let o = service(lang: "en").hold(SaveDraft(id: "hold-0000001", request: SaveRequest(kind: "link", url: "https://x.example", entry: "share")))

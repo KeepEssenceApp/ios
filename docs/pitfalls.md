@@ -54,3 +54,11 @@
 - **图片没存成，同时分享了链接或文字：存的是链接或文字，要说。** `ImageNote.instead` 把成功那句换成「图片没能存入，只存入了链接/文字。」；**在离线队列里等着的，只说手机本地知道的事**：「图片不会存入，排队的只有链接/文字。」（`queuedInstead`，`share.image_only_*_queued`）接在「排着队」那句后面。不说「只会存入」「会改存」：那是在替核心保证以后一定存入（Project 7213889512 / Marketing 7213864126）。不能把已经存入的那句接在队列那句后面：队列那句说「还没存入」，后面再说「存入了」是自相矛盾（QA 复验抓到的，原来的测试还把它当成对的）。`duplicate` 和失败仍然是核心原来的那句。
 - **动图的「只保留了一帧」要三条同时成立才说：核心答了 `saved`、`image_stored == true`、源图是多帧。** queued、`duplicate`、失败、超出配额都不说，queued 也不改说另一句（Project 7213889512，取代 7212067866 的「stored 或 queued」）。超出配额时核心答的仍是 `status: saved`（`message_key: saved_image_skipped_quota`），条目存进去了、图片没有，所以只看 `.saved` 不够：`SaveOutcome.imageStored` 带着核心的 `image_stored`，`ImageNote.apply` 只在它为 `true` 时追加；`nil`（核心没说）也不追加，不去猜。
 - **动图要看文件，不看类型。** `ImagePrep.isAnimation`：GIF 或 PNG，并且 `CGImageSourceGetCount` 大于 1。静态的 GIF 什么都没丢，不说。说「动图只保留了一帧」，不说「第一帧」：已知的只有留下了一张。
+
+## 主题和 spec 的比较（#107）
+
+- **这条比较在 CI 里从来没真正跑过**（本机，2026-11-28，QA 在 `33804c7` 上复现）。`testThemeMirrorsTheTokens` 找不到旁边的 `spec/design/tokens.css` 就 `XCTSkip`，而 `swift test` 在只有跳过、没有失败时退出 0；CI 只检出本仓，所以一直是绿的。旁边放上 spec 时，旧色表有 18 处不一致。现在 CI 把 spec 钉在 `SPEC_REF` 那一版检出到 `../spec`，并设 `KE_REQUIRE_SPEC=1`：缺 spec 是失败，不是跳过。CI 还单独复制一份只有 `KeepCore` 的目录、不放 spec，确认这时 `swift test` 失败，并且失败信息是「缺 spec」。
+- `actions/checkout` 的 `path` 不能指到工作区外面（推断，它只接受工作区之内的路径），而测试按自己的源文件路径找 `../spec`，所以 CI 用 `git fetch --depth 1 <仓库> <完整 SHA>` 自己检出。按完整 SHA 取，不用缩写。
+- 圆角不是一个基础常量。每个画圆角的组件在 `Theme.Surface` 里有自己的一项，视图只写 `Theme.shape(.card)` 这样的调用；`testEachComponentTakesItsOwnToken` 读视图源码，检查每个组件取的是自己的那一项，`testNoViewNamesARadiusOutsideTheTable` 检查没有视图自己写 `RoundedRectangle(`、`Capsule(` 或 `Theme.Radius.base` 之类（弹层的 `presentationCornerRadius` 只许用 `Theme.Radius.sheet`）。新加一个有圆角的组件，要在 `Surface` 和测试的两张表里各加一项。
+- 按钮、选项和状态标记是胶囊（`Capsule`，对应 `--ke-radius-control: 999px`）；`RoundedRectangle(cornerRadius: 999)` 在 44 pt 高的控件上看起来一样，但表里写的是 `Capsule`，测试也按 `Capsule` 比较。
+- 还没做：spec 写「手指按的东西至少 44 高」（`--ke-control-height`）。这次只改了圆角和色表，按钮的高度没动（也没有量过现在是多少）。验证：只有 macOS 上的 `swift test` 和不启动模拟器的 `xcodebuild build`；界面没有在模拟器或真机上看过。

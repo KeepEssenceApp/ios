@@ -9,15 +9,15 @@ extension View {
         self.padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.base))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.base).stroke(Theme.line, lineWidth: 1))
+            .clipShape(Theme.shape(.card))
+            .overlay(Theme.shape(.card).stroke(Theme.line, lineWidth: 1))
     }
 
     func quietBox(padding: CGFloat = 12) -> some View {
         self.padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.quiet)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.base))
+            .clipShape(Theme.shape(.quietBox))
     }
 
     func page() -> some View {
@@ -64,7 +64,7 @@ struct SolidButton: ButtonStyle {
             .padding(.horizontal, small ? 12 : 16)
             .padding(.vertical, small ? 8 : 12)
             .background(Theme.solid)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.base))
+            .clipShape(Theme.shape(.solidButton))
             .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }
@@ -79,8 +79,8 @@ struct QuietButton: ButtonStyle {
             .padding(.horizontal, small ? 12 : 16)
             .padding(.vertical, small ? 8 : 12)
             .background(Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.base))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.base).stroke(danger ? Theme.danger : Theme.line, lineWidth: 1))
+            .clipShape(Theme.shape(.quietButton))
+            .overlay(Theme.shape(.quietButton).stroke(danger ? Theme.danger : Theme.line, lineWidth: 1))
             .opacity(configuration.isPressed ? 0.6 : 1)
     }
 }
@@ -104,8 +104,8 @@ struct KEField: View {
             .font(Theme.body)
             .padding(12)
             .background(Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.base))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.base).stroke(Theme.line, lineWidth: 1))
+            .clipShape(Theme.shape(.field))
+            .overlay(Theme.shape(.field).stroke(Theme.line, lineWidth: 1))
     }
 }
 
@@ -272,7 +272,7 @@ struct SwipeRow<Content: View>: View {
             .padding(.horizontal, 14)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.quiet)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.base))
+            .clipShape(Theme.shape(.swipeBackground))
             .accessibilityHidden(true)
 
             content().offset(x: offset)
@@ -356,7 +356,7 @@ struct StatusMark: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.base).stroke(Theme.line, lineWidth: 1))
+                .overlay(Theme.shape(.statusMark).stroke(Theme.line, lineWidth: 1))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(s.headline)
@@ -571,7 +571,7 @@ struct NoticeBar: View {
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Theme.solid)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.base))
+            .clipShape(Theme.shape(.notice))
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
             .accessibilityIdentifier("notice")

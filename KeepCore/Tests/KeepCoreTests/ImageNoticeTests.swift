@@ -126,6 +126,76 @@ final class ImageNoticeTests: XCTestCase {
         XCTAssertTrue(ImagePrep.isAnimation(source))
     }
 
+    // MARK: an APNG and an animated WebP (ruling 2026-11-28: the count is the file's, whatever the format)
+
+    func testAnAPNGIsCountedFromTheFile() {
+        let still = Synthetic.stillPNG()
+        XCTAssertTrue(ImagePrep.isAnimation(Synthetic.apng(frames: 2, still: still)))
+        XCTAssertTrue(ImagePrep.isAnimation(Synthetic.apng(frames: 5, still: still)))
+        XCTAssertTrue(ImagePrep.isAnimation(animation(.png, frames: 2)), "one that ImageIO wrote, too")
+        XCTAssertFalse(ImagePrep.isAnimation(Synthetic.apng(frames: 1, still: still)), "an acTL that says one frame is a still picture")
+        XCTAssertFalse(ImagePrep.isAnimation(still))
+    }
+
+    func testAnAnimatedWebPIsCountedFromTheFileAndAStillOneIsNot() {
+        for picture in [Synthetic.lossyPicture, Synthetic.losslessPicture] {
+            XCTAssertTrue(ImagePrep.isAnimation(Synthetic.animatedWebP(frames: 2, picture: picture)))
+        }
+        XCTAssertTrue(ImagePrep.isAnimation(Synthetic.animatedWebP(frames: 5)))
+        XCTAssertFalse(ImagePrep.isAnimation(Synthetic.animatedWebP(frames: 1)), "the animation flag with one frame is a still picture")
+        XCTAssertFalse(ImagePrep.isAnimation(Synthetic.stillWebP()))
+        XCTAssertFalse(ImagePrep.isAnimation(Synthetic.stillWebP(picture: Synthetic.losslessPicture)))
+        // Under a VP8X header without the animation flag (alpha, colour profile, metadata): a still picture.
+        for flags: UInt8 in [0x00, 0x10, 0x20, 0x08, 0x04, 0x3c] {
+            XCTAssertFalse(ImagePrep.isAnimation(Synthetic.stillWebP(flags: flags)), "VP8X flags \(flags)")
+        }
+        XCTAssertFalse(ImagePrep.isAnimation(Synthetic.webPWithFramesButNoFlag(frames: 2)), "frames under a header without the flag")
+    }
+
+    func testAnAPNGAndAnAnimatedWebPArePreparedAsOnePicture() throws {
+        for (source, width) in [(Synthetic.animatedWebP(frames: 2), 8), (Synthetic.apng(frames: 2, still: Synthetic.stillPNG()), 16)] {
+            XCTAssertTrue(ImagePrep.isAnimation(source))
+            guard case .ready(let p) = ImagePrep.prepareDetailed(source) else { return XCTFail("not ready") }
+            XCTAssertEqual(p.width, width)
+            XCTAssertEqual(CGImageSourceCreateWithData(p.data as CFData, nil).map { CGImageSourceGetCount($0) }, 1, "one picture is kept")
+        }
+    }
+
+    /// The four cases of the ruling, for every format: the sentence is added only when the core answered `saved`, the
+    /// picture is stored (`image_stored == true`) and the source had more than one frame. The note is made the way
+    /// ShareViewController makes it: it carries the sentence only for a source that `isAnimation`.
+    func testTheOneFrameSentenceFollowsTheFilesFramesAndTheCoresAnswerForEveryFormat() {
+        let still = Synthetic.stillPNG()
+        let sentence = "Only one frame of the animation was kept."
+        func said(_ source: Data, _ outcome: SaveOutcome) -> String {
+            (ImagePrep.isAnimation(source) ? ImageNote(after: sentence) : ImageNote()).apply(to: outcome).sentence
+        }
+        let animations: [(String, Data)] = [
+            ("GIF", animation(.gif, frames: 2)),
+            ("APNG", Synthetic.apng(frames: 2, still: still)),
+            ("animated WebP", Synthetic.animatedWebP(frames: 2)),
+        ]
+        let stills: [(String, Data)] = [
+            ("still GIF", animation(.gif, frames: 1)),
+            ("static PNG", still),
+            ("PNG with an acTL of one", Synthetic.apng(frames: 1, still: still)),
+            ("static WebP", Synthetic.stillWebP()),
+            ("static WebP under VP8X without the flag", Synthetic.stillWebP(flags: 0x10)),
+            ("flagged WebP with one frame", Synthetic.animatedWebP(frames: 1)),
+        ]
+        for (name, source) in animations {
+            XCTAssertEqual(said(source, saved), "Saved. \(sentence)", name)
+            XCTAssertEqual(said(source, overQuota), overQuota.sentence, "\(name): over quota, the picture was not stored")
+            XCTAssertEqual(said(source, SaveOutcome(kind: .saved, sentence: "Saved.")), "Saved.", "\(name): an answer that does not say is not read as stored")
+            XCTAssertEqual(said(source, queued), queued.sentence, name)
+            XCTAssertEqual(said(source, duplicate), duplicate.sentence, name)
+            XCTAssertEqual(said(source, failed), failed.sentence, name)
+        }
+        for (name, source) in stills {
+            for outcome in [saved, overQuota, queued, duplicate, failed] { XCTAssertEqual(said(source, outcome), outcome.sentence, name) }
+        }
+    }
+
     // MARK: what the sentence becomes
 
     private let saved = SaveOutcome(kind: .saved, sentence: "Saved.", imageStored: true)

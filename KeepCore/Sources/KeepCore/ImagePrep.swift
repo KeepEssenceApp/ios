@@ -61,11 +61,16 @@ public enum ImagePrep {
         return .tooLarge
     }
 
-    /// Whether the source is an animation (a GIF or a PNG with more than one picture), of which `prepare` keeps one
-    /// still picture. Counted from the file, not guessed from its type: a still GIF loses nothing. Which picture is
-    /// kept is not claimed here (QA #87).
+    /// Whether the source is an animation (a GIF, a PNG with more than one picture (an APNG), or an animated WebP), of
+    /// which `prepare` keeps one still picture. Counted from the file, not guessed from its type: a still GIF, a
+    /// still WebP (also one under a `VP8X` header without the animation flag) and a PNG that says it has one
+    /// picture lose nothing. Which picture is kept is not claimed here (QA #87).
+    ///
+    /// ImageIO counts the pictures of all three. That was checked for WebP, which is the newest of them, with made-up
+    /// files on macOS 27.2.1 and on the iOS 26.0 and 27.0 simulators (not on older systems; see docs/pitfalls.md). HEIC
+    /// sequences and animated AVIF are not counted: they are not in the ruling's scope.
     public static func isAnimation(_ source: Data) -> Bool {
         guard let src = CGImageSourceCreateWithData(source as CFData, nil), let type = CGImageSourceGetType(src) as String? else { return false }
-        return [UTType.gif.identifier, UTType.png.identifier].contains(type) && CGImageSourceGetCount(src) > 1
+        return [UTType.gif.identifier, UTType.png.identifier, UTType.webP.identifier].contains(type) && CGImageSourceGetCount(src) > 1
     }
 }

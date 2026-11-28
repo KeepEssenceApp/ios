@@ -230,8 +230,8 @@ struct PasteSheet: View {
                     .frame(minHeight: 180)
                     .padding(8)
                     .background(Theme.card)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.base))
-                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.base).stroke(Theme.line, lineWidth: 1))
+                    .clipShape(Theme.shape(.textEditor))
+                    .overlay(Theme.shape(.textEditor).stroke(Theme.line, lineWidth: 1))
                     .accessibilityIdentifier("paste.body")
                 HStack(spacing: 8) {
                     Button(L("action.paste")) { if let s = UIPasteboard.general.string { text = s } }.buttonStyle(QuietButton())

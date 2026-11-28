@@ -40,11 +40,18 @@ final class ImageNoticeTests: XCTestCase {
         XCTAssertEqual(try text("share.image_note", "en"), "Images are processed on your phone before saving; the original isn't uploaded.")
         XCTAssertEqual(try text("share.image_only_link", "zh-Hans"), "图片没能存入，只存入了链接。")
         XCTAssertEqual(try text("share.image_only_text", "zh-Hans"), "图片没能存入，只存入了文字。")
-        // While it waits in the queue it is what WILL be saved, not what was.
-        XCTAssertEqual(try text("share.image_only_link_queued", "zh-Hans"), "图片没能存入，只会存入链接。")
-        XCTAssertEqual(try text("share.image_only_link_queued", "en"), "The image couldn't be saved; only the link will be.")
-        XCTAssertEqual(try text("share.image_only_text_queued", "zh-Hans"), "图片没能存入，只会存入文字。")
-        XCTAssertEqual(try text("share.image_only_text_queued", "en"), "The image couldn't be saved; only the text will be.")
+        // While it waits in the queue: only what the phone knows (the picture will not be saved; what is queued is
+        // the link or the text). Not a promise that the core saves it later (Project 7213889512).
+        XCTAssertEqual(try text("share.image_only_link_queued", "zh-Hans"), "图片不会存入，排队的只有链接。")
+        XCTAssertEqual(try text("share.image_only_link_queued", "en"), "The image won't be saved; only the link is queued.")
+        XCTAssertEqual(try text("share.image_only_text_queued", "zh-Hans"), "图片不会存入，排队的只有文字。")
+        XCTAssertEqual(try text("share.image_only_text_queued", "en"), "The image won't be saved; only the text is queued.")
+        for key in ["share.image_only_link_queued", "share.image_only_text_queued"] {
+            for lang in ["zh-Hans", "en"] {
+                let s = try text(key, lang)
+                XCTAssertFalse(s.contains("只会存入") || s.contains("会改存") || s.lowercased().contains(" will be"), "\(key) \(lang): the queue is not a promise")
+            }
+        }
         XCTAssertEqual(try text("share.image_too_large", "zh-Hans"), "图片太大，压缩后仍超过 %lld MiB，没有存入。")
         XCTAssertEqual(try text("share.image_too_large", "en"), "This image is too large even after compression (over %lld MiB), so it wasn't saved.")
         XCTAssertEqual(try text("share.image_unreadable", "zh-Hans"), "这张图片读不出来，没有存入。")
@@ -119,9 +126,81 @@ final class ImageNoticeTests: XCTestCase {
         XCTAssertTrue(ImagePrep.isAnimation(source))
     }
 
+    // MARK: an APNG and an animated WebP (ruling 2026-11-28: the count is the file's, whatever the format)
+
+    func testAnAPNGIsCountedFromTheFile() {
+        let still = Synthetic.stillPNG()
+        XCTAssertTrue(ImagePrep.isAnimation(Synthetic.apng(frames: 2, still: still)))
+        XCTAssertTrue(ImagePrep.isAnimation(Synthetic.apng(frames: 5, still: still)))
+        XCTAssertTrue(ImagePrep.isAnimation(animation(.png, frames: 2)), "one that ImageIO wrote, too")
+        XCTAssertFalse(ImagePrep.isAnimation(Synthetic.apng(frames: 1, still: still)), "an acTL that says one frame is a still picture")
+        XCTAssertFalse(ImagePrep.isAnimation(still))
+    }
+
+    func testAnAnimatedWebPIsCountedFromTheFileAndAStillOneIsNot() {
+        for picture in [Synthetic.lossyPicture, Synthetic.losslessPicture] {
+            XCTAssertTrue(ImagePrep.isAnimation(Synthetic.animatedWebP(frames: 2, picture: picture)))
+        }
+        XCTAssertTrue(ImagePrep.isAnimation(Synthetic.animatedWebP(frames: 5)))
+        XCTAssertFalse(ImagePrep.isAnimation(Synthetic.animatedWebP(frames: 1)), "the animation flag with one frame is a still picture")
+        XCTAssertFalse(ImagePrep.isAnimation(Synthetic.stillWebP()))
+        XCTAssertFalse(ImagePrep.isAnimation(Synthetic.stillWebP(picture: Synthetic.losslessPicture)))
+        // Under a VP8X header without the animation flag (alpha, colour profile, metadata): a still picture.
+        for flags: UInt8 in [0x00, 0x10, 0x20, 0x08, 0x04, 0x3c] {
+            XCTAssertFalse(ImagePrep.isAnimation(Synthetic.stillWebP(flags: flags)), "VP8X flags \(flags)")
+        }
+        XCTAssertFalse(ImagePrep.isAnimation(Synthetic.webPWithFramesButNoFlag(frames: 2)), "frames under a header without the flag")
+    }
+
+    func testAnAPNGAndAnAnimatedWebPArePreparedAsOnePicture() throws {
+        for (source, width) in [(Synthetic.animatedWebP(frames: 2), 8), (Synthetic.apng(frames: 2, still: Synthetic.stillPNG()), 16)] {
+            XCTAssertTrue(ImagePrep.isAnimation(source))
+            guard case .ready(let p) = ImagePrep.prepareDetailed(source) else { return XCTFail("not ready") }
+            XCTAssertEqual(p.width, width)
+            XCTAssertEqual(CGImageSourceCreateWithData(p.data as CFData, nil).map { CGImageSourceGetCount($0) }, 1, "one picture is kept")
+        }
+    }
+
+    /// The four cases of the ruling, for every format: the sentence is added only when the core answered `saved`, the
+    /// picture is stored (`image_stored == true`) and the source had more than one frame. The note is made the way
+    /// ShareViewController makes it: it carries the sentence only for a source that `isAnimation`.
+    func testTheOneFrameSentenceFollowsTheFilesFramesAndTheCoresAnswerForEveryFormat() {
+        let still = Synthetic.stillPNG()
+        let sentence = "Only one frame of the animation was kept."
+        func said(_ source: Data, _ outcome: SaveOutcome) -> String {
+            (ImagePrep.isAnimation(source) ? ImageNote(after: sentence) : ImageNote()).apply(to: outcome).sentence
+        }
+        let animations: [(String, Data)] = [
+            ("GIF", animation(.gif, frames: 2)),
+            ("APNG", Synthetic.apng(frames: 2, still: still)),
+            ("animated WebP", Synthetic.animatedWebP(frames: 2)),
+        ]
+        let stills: [(String, Data)] = [
+            ("still GIF", animation(.gif, frames: 1)),
+            ("static PNG", still),
+            ("PNG with an acTL of one", Synthetic.apng(frames: 1, still: still)),
+            ("static WebP", Synthetic.stillWebP()),
+            ("static WebP under VP8X without the flag", Synthetic.stillWebP(flags: 0x10)),
+            ("flagged WebP with one frame", Synthetic.animatedWebP(frames: 1)),
+        ]
+        for (name, source) in animations {
+            XCTAssertEqual(said(source, saved), "Saved. \(sentence)", name)
+            XCTAssertEqual(said(source, overQuota), overQuota.sentence, "\(name): over quota, the picture was not stored")
+            XCTAssertEqual(said(source, SaveOutcome(kind: .saved, sentence: "Saved.")), "Saved.", "\(name): an answer that does not say is not read as stored")
+            XCTAssertEqual(said(source, queued), queued.sentence, name)
+            XCTAssertEqual(said(source, duplicate), duplicate.sentence, name)
+            XCTAssertEqual(said(source, failed), failed.sentence, name)
+        }
+        for (name, source) in stills {
+            for outcome in [saved, overQuota, queued, duplicate, failed] { XCTAssertEqual(said(source, outcome), outcome.sentence, name) }
+        }
+    }
+
     // MARK: what the sentence becomes
 
-    private let saved = SaveOutcome(kind: .saved, sentence: "Saved.")
+    private let saved = SaveOutcome(kind: .saved, sentence: "Saved.", imageStored: true)
+    /// The core answered `saved_image_skipped_quota`: the item is in, the picture is not.
+    private let overQuota = SaveOutcome(kind: .saved, sentence: "Saved. The image was not stored: storage quota exceeded.", imageStored: false)
     private let queued = SaveOutcome(kind: .queued, sentence: "Queued.")
     private let duplicate = SaveOutcome(kind: .duplicate, sentence: "Already saved.")
     private let failed = SaveOutcome(kind: .failed, sentence: "Not saved: no.")
@@ -131,15 +210,15 @@ final class ImageNoticeTests: XCTestCase {
     }
 
     func testAPictureSavedAsALinkSaysWhatWasSaved() {
-        let note = ImageNote(instead: "The image couldn't be saved; only the link was.", queuedInstead: "The image couldn't be saved; only the link will be.")
+        let note = ImageNote(instead: "The image couldn't be saved; only the link was.", queuedInstead: "The image won't be saved; only the link is queued.")
         XCTAssertEqual(note.apply(to: saved).sentence, "The image couldn't be saved; only the link was.")
         XCTAssertEqual(note.apply(to: saved).kind, .saved)
     }
 
     func testAQueuedSaveSaysWhatWillBeSavedAfterTheQueuedSentenceAndNeverTheWordsOfASaveThatHappened() {
-        let note = ImageNote(instead: "The image couldn't be saved; only the text was.", queuedInstead: "The image couldn't be saved; only the text will be.")
+        let note = ImageNote(instead: "The image couldn't be saved; only the text was.", queuedInstead: "The image won't be saved; only the text is queued.")
         let out = note.apply(to: queued)
-        XCTAssertEqual(out.sentence, "Queued. The image couldn't be saved; only the text will be.")
+        XCTAssertEqual(out.sentence, "Queued. The image won't be saved; only the text is queued.")
         XCTAssertEqual(out.kind, .queued)
         XCTAssertFalse(out.sentence.contains("only the text was"), "a save that is waiting is not said to have happened")
         // Only the done wording, with nothing for the queue: the queued sentence stands alone.
@@ -147,7 +226,7 @@ final class ImageNoticeTests: XCTestCase {
     }
 
     func testADuplicateAndAFailureKeepTheCoresSentence() {
-        let note = ImageNote(instead: "The image couldn't be saved; only the link was.", queuedInstead: "The image couldn't be saved; only the link will be.")
+        let note = ImageNote(instead: "The image couldn't be saved; only the link was.", queuedInstead: "The image won't be saved; only the link is queued.")
         XCTAssertEqual(note.apply(to: duplicate), duplicate)
         XCTAssertEqual(note.apply(to: failed), failed)
         let loss = ImageNote(after: "Only one frame of the animation was kept.")
@@ -160,6 +239,24 @@ final class ImageNoticeTests: XCTestCase {
         XCTAssertEqual(note.apply(to: saved).sentence, "Saved. Only one frame of the animation was kept.")
         XCTAssertEqual(note.apply(to: saved).kind, .saved)
         // "was kept" is for a picture that was saved: while it waits, the core's queued sentence stands alone.
+        XCTAssertEqual(note.apply(to: queued), queued)
+    }
+
+    /// Project 7213889512: the one-frame sentence needs the core's `saved`, `image_stored == true` and a source with
+    /// more than one frame (the note only carries `after` then). Over quota is `saved` with `image_stored == false`.
+    func testTheOneFrameSentenceIsNotSaidWhenThePictureWasNotStored() {
+        let note = ImageNote(after: "Only one frame of the animation was kept.")
+        XCTAssertEqual(note.apply(to: overQuota), overQuota, "over quota: the picture is not stored, so no frame was kept")
+        // An answer that does not say is not read as stored.
+        XCTAssertEqual(note.apply(to: SaveOutcome(kind: .saved, sentence: "Saved.")).sentence, "Saved.")
+        XCTAssertEqual(note.apply(to: SaveOutcome(kind: .saved, sentence: "Saved.", imageStored: nil)).sentence, "Saved.")
+        // The only case that adds it.
+        XCTAssertEqual(note.apply(to: saved).sentence, "Saved. Only one frame of the animation was kept.")
+        // A source that was not an animation has no `after`, so a stored picture gets the core's sentence alone.
+        XCTAssertEqual(ImageNote().apply(to: saved), saved)
+        // A queued save adds nothing, whatever the note holds.
+        XCTAssertEqual(ImageNote(queuedInstead: "The image won't be saved; only the link is queued.", after: "Only one frame of the animation was kept.").apply(to: SaveOutcome(kind: .queued, sentence: "Queued.")).sentence,
+                       "Queued. The image won't be saved; only the link is queued.")
         XCTAssertEqual(note.apply(to: queued), queued)
     }
 }

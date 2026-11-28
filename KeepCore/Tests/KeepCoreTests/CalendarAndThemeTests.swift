@@ -64,30 +64,20 @@ final class ThemeAndStringsTests: XCTestCase {
         URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
     }
 
-    /// The Swift theme mirrors design/tokens.css of the spec, value for value. Skipped where the spec
-    /// repository is not checked out next to this one.
+    /// The Swift theme mirrors design/tokens.css of the spec, value for value: every colour (light and
+    /// dark, `gold-ink` included) and every radius, read from the css. Without the spec repository next to
+    /// this one it is skipped, unless KE_REQUIRE_SPEC=1, which CI sets: then it fails.
     func testThemeMirrorsTheTokens() throws {
-        let css = repo.deletingLastPathComponent().appendingPathComponent("spec/design/tokens.css")
-        guard let text = try? String(contentsOf: css, encoding: .utf8) else { throw XCTSkip("spec/design/tokens.css is not next to this repository") }
-        let parts = text.components(separatedBy: "@media (prefers-color-scheme: dark)")
-        XCTAssertEqual(parts.count, 2)
-        func colours(_ s: String) -> [String: UInt32] {
-            var out: [String: UInt32] = [:]
-            let re = try! NSRegularExpression(pattern: "--ke-([a-z0-9-]+):\\s*#([0-9A-Fa-f]{6})")
-            for m in re.matches(in: s, range: NSRange(s.startIndex..., in: s)) {
-                out[String(s[Range(m.range(at: 1), in: s)!])] = UInt32(s[Range(m.range(at: 2), in: s)!], radix: 16)
-            }
-            return out
+        switch SpecTokens.lookup(nextTo: repo, environment: ProcessInfo.processInfo.environment) {
+        case .skip(let why): throw XCTSkip(why)
+        case .fail(let why): XCTFail(why)
+        case .css(let css):
+            let differences = SpecTokens.differences(css)
+            XCTAssertTrue(differences.isEmpty, "Theme differs from tokens.css:\n" + differences.joined(separator: "\n"))
+            // The sizes are the phone ones of tokens.css (body 16, secondary 14, caption 13).
+            XCTAssertEqual([Theme.Size.display, Theme.Size.title, Theme.Size.subtitle, Theme.Size.item, Theme.Size.body, Theme.Size.secondary, Theme.Size.caption],
+                           [32, 26, 20, 17, 16, 14, 13])
         }
-        let light = colours(parts[0]), dark = colours(parts[1])
-        XCTAssertEqual(Set(light.keys), Set(Theme.tokens.keys), "every colour of tokens.css, and no other")
-        for (name, token) in Theme.tokens {
-            XCTAssertEqual(token.light, light[name], "--ke-\(name) light")
-            XCTAssertEqual(token.dark, dark[name] ?? light[name], "--ke-\(name) dark")
-        }
-        XCTAssertEqual([Theme.Radius.mark, Theme.Radius.tag, Theme.Radius.base, Theme.Radius.sheet], [0, 4, 6, 10])
-        XCTAssertEqual([Theme.Size.display, Theme.Size.title, Theme.Size.subtitle, Theme.Size.item, Theme.Size.body, Theme.Size.secondary, Theme.Size.caption],
-                       [32, 26, 20, 17, 16, 14, 13])
     }
 
     /// The bundled copy of the shared rules is the contract's, not a second wording.

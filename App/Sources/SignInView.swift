@@ -160,6 +160,6 @@ private struct DarkField: ViewModifier {
             .font(Theme.body)
             .foregroundStyle(Theme.white)
             .padding(12)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.base).stroke(Theme.text3, lineWidth: 1))
+            .overlay(Theme.shape(.darkField).stroke(Theme.text3, lineWidth: 1))
     }
 }

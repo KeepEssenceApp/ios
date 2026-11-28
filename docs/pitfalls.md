@@ -34,7 +34,9 @@
 ## 界面测试
 
 - **给容器加 `accessibilityIdentifier`，里面所有元素的标识都会被盖掉**（模拟器）。之后 `app.staticTexts["内容概述"]` 就找不到了。先加 `.accessibilityElement(children: .contain)`，再加标识。
-- iOS 26 的 Safari 没有单独的分享按钮了，在右下角的 More 菜单里（模拟器）。
+- iOS 26 的 Safari 没有单独的分享按钮了，在右下角的 More 菜单里（模拟器）。CI 模拟器（iPhone 17 Pro，iOS 26.5）上读出来的真实元素（ios#9，run 46162523951 的无断言探针）：`MoreMenuButton`（Button，标签 `More`）→ 菜单容器 `TabBarMoreMenu`（Other，只在菜单打开时存在）→ 里面的 `ShareButton`（Button，标签 `Share`；它下面还有一个标签同为 `Share` 的 Image `square.and.arrow.up`，所以只按标签找会找到两个）→ 分享面板 `ActivityListView` → `shareCell`（Cell，标签 `KeepEssence`）。
+- **Safari 在新模拟器上第一次启动会弹一个提示气泡**（`TipView`，关闭钮 `xmark.circle.fill`，标签 `Close`），它带一整屏的 `PopoverDismissRegion`：这时 `MoreMenuButton` 存在但点不到（命中点 `{-1, -1}`），点下去只是把气泡点掉，菜单没开。要先点它自己的关闭钮、等它消失，再点 More。同一台模拟器上之后再启动 Safari 就没有了，所以靠前面的用例“顺手”点掉它是不可靠的。
+- **按标签前缀找 Share 会找到页面标题**：测试页的标题是 `Share test <数字>`，`label BEGINSWITH 'Share'` 会点到它。按菜单容器 + 标识 + 控件类型找。
 - 模拟器里的界面测试能直接往电脑的磁盘上写截图，路径用 `TEST_RUNNER_` 前缀的环境变量传进去。
 
 ## 网络

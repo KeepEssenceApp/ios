@@ -33,6 +33,12 @@ final class KeepEssenceUITests: XCTestCase {
         return app
     }
 
+    /// Exists and can be tapped now: an element under an overlay exists but is not hittable.
+    private func waitUntilHittable(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
+        let hittable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND isHittable == true"), object: element)
+        return XCTWaiter().wait(for: [hittable], timeout: timeout) == .completed
+    }
+
     private func signIn(_ app: XCUIApplication) {
         let email = app.textFields["signin.email"]
         XCTAssertTrue(email.waitForExistence(timeout: 20))
@@ -158,29 +164,71 @@ final class KeepEssenceUITests: XCTestCase {
         address.tap()
         safari.typeText(page + "\n")
         XCTAssertTrue(safari.staticTexts["A page made for the share test"].waitForExistence(timeout: 15))
+        shot("10-safari-1-page")
 
-        let share = safari.buttons["ShareButton"].firstMatch
-        if share.waitForExistence(timeout: 5) {
-            share.tap()
-        } else {
-            // Newer Safari keeps Share behind the page menu.
-            safari.buttons.matching(NSPredicate(format: "label IN {'More', '更多'}")).firstMatch.tap()
-            let item = safari.descendants(matching: .any).matching(NSPredicate(format: "label IN {'Share', '共享', '分享'} OR label BEGINSWITH 'Share'")).firstMatch
-            XCTAssertTrue(item.waitForExistence(timeout: 5))
+        // iOS 26 Safari has no Share button in its toolbar: Share is the first item of the page menu behind
+        // `More`. Every element below was read from the CI simulator's own accessibility hierarchy (ios#9),
+        // and each step is named so that the log and the screenshots show them in this order.
+
+        // Step 0 (only the first time Safari runs on a fresh simulator): its tip about the new menu covers
+        // the screen with a full-screen dismiss region, which swallows a tap on `More`. Close it by its own
+        // button and wait for it to go; when there is no tip, there is nothing to do.
+        XCTContext.runActivity(named: "I3 step 0: Safari's first-run tip, if it is up, is closed") { _ in
+            let tip = safari.otherElements["TipView"]
+            if tip.waitForExistence(timeout: 5) {
+                let close = tip.buttons["xmark.circle.fill"]
+                XCTAssertTrue(close.waitForExistence(timeout: 5), "the tip has its Close button")
+                close.tap()
+                XCTAssertTrue(tip.waitForNonExistence(timeout: 5), "the tip is gone")
+            }
+            shot("10-safari-2-tip-closed")
+        }
+
+        // Step 1: the page menu opens.
+        let more = safari.buttons["MoreMenuButton"]
+        let menu = safari.otherElements["TabBarMoreMenu"]
+        XCTContext.runActivity(named: "I3 step 1: the Safari page menu opens") { _ in
+            XCTAssertTrue(more.waitForExistence(timeout: 10), "Safari's More button is there")
+            XCTAssertTrue(waitUntilHittable(more, timeout: 10), "More is not under an overlay")
+            more.tap()
+            XCTAssertTrue(menu.waitForExistence(timeout: 10), "the page menu is open")
+            shot("10-safari-3-page-menu")
+        }
+
+        // Step 2: the tap lands on the menu's own Share item: a button inside the menu, found by its
+        // identifier, so the page's own title ("Share test …") can never match it.
+        let item = menu.buttons["ShareButton"]
+        XCTContext.runActivity(named: "I3 step 2: the tap lands on Share in the page menu") { _ in
+            XCTAssertTrue(item.waitForExistence(timeout: 5), "the page menu has its Share item")
+            XCTAssertTrue(["Share", "共享", "分享"].contains(item.label), "that item is Share: \(item.label)")
+            XCTAssertTrue(waitUntilHittable(item, timeout: 5), "the Share item can be tapped")
             item.tap()
         }
-        let ours = safari.descendants(matching: .any).matching(NSPredicate(format: "label == 'KeepEssence'")).firstMatch
-        XCTAssertTrue(ours.waitForExistence(timeout: 15), "KeepEssence is in the system share sheet")
-        shot("10-share-sheet")
-        ours.tap()
+
+        // Step 3: the system share sheet first, then KeepEssence in it, as two separate waits.
+        let sheet = safari.otherElements["ActivityListView"]
+        let ours = sheet.cells.matching(NSPredicate(format: "identifier == 'shareCell' AND label == 'KeepEssence'")).firstMatch
+        XCTContext.runActivity(named: "I3 step 3: the system share sheet is up and KeepEssence is in it") { _ in
+            XCTAssertTrue(sheet.waitForExistence(timeout: 15), "the system share sheet is open")
+            XCTAssertTrue(ours.waitForExistence(timeout: 15), "KeepEssence is in the system share sheet")
+            shot("10-share-sheet")
+        }
+
+        // Step 4: picking KeepEssence saves the page, and the core's one sentence says so.
         let sentence = safari.staticTexts["share.sentence"]
-        XCTAssertTrue(sentence.waitForExistence(timeout: 15), "the core's one sentence is shown")
-        // The extension follows the system language, not the launch arguments of the app.
-        XCTAssertTrue(["已存入。", "Saved."].contains(sentence.label), sentence.label)
-        shot("11-share-saved")
-        // It closes itself and Safari stays in front.
-        XCTAssertTrue(sentence.waitForNonExistence(timeout: 8))
-        XCTAssertEqual(safari.state, .runningForeground)
-        XCTAssertNotEqual(app.state, .runningForeground, "the app was not opened")
+        XCTContext.runActivity(named: "I3 step 4: KeepEssence is picked and says the page is saved") { _ in
+            ours.tap()
+            XCTAssertTrue(sentence.waitForExistence(timeout: 15), "the core's one sentence is shown")
+            // The extension follows the system language, not the launch arguments of the app.
+            XCTAssertTrue(["已存入。", "Saved."].contains(sentence.label), sentence.label)
+            shot("11-share-saved")
+        }
+
+        // Step 5: it closes itself and Safari stays in front.
+        XCTContext.runActivity(named: "I3 step 5: the sheet closes itself and Safari is still in front") { _ in
+            XCTAssertTrue(sentence.waitForNonExistence(timeout: 8))
+            XCTAssertEqual(safari.state, .runningForeground)
+            XCTAssertNotEqual(app.state, .runningForeground, "the app was not opened")
+        }
     }
 }
